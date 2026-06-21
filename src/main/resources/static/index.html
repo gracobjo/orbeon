@@ -21,6 +21,9 @@
         .code-area { font-family: 'Consolas', 'Monaco', 'Courier New', monospace; tab-size: 2; }
         .preview-input { pointer-events: none; }
         #visorPdf { background: #525659; }
+        .clickable-result { cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; }
+        .clickable-result:hover { border-color: #2563eb; box-shadow: 0 0 0 1px #2563eb33; }
+        #textareaXml::selection { background: #fbbf24; color: #1e293b; }
     </style>
 </head>
 <body class="bg-slate-100 min-h-screen flex flex-col">
@@ -72,6 +75,7 @@
             <button id="tabGuiado" class="flex-shrink-0 px-3 py-3 text-xs text-center tab-active transition">Lista</button>
             <button id="tabAsistente" class="flex-shrink-0 px-3 py-3 text-xs text-center text-slate-500 hover:text-slate-700 transition">Asistente</button>
             <button id="tabSecciones" class="flex-shrink-0 px-3 py-3 text-xs text-center text-slate-500 hover:text-slate-700 transition">Secciones</button>
+            <button id="tabDependencias" class="flex-shrink-0 px-3 py-3 text-xs text-center text-slate-500 hover:text-slate-700 transition">Dependencias</button>
             <button id="tabModificar" class="flex-shrink-0 px-3 py-3 text-xs text-center text-slate-500 hover:text-slate-700 transition">Modificar JSON</button>
             <button id="tabChangelog" class="flex-shrink-0 px-3 py-3 text-xs text-center text-slate-500 hover:text-slate-700 transition">Cambios <span id="cntChangelog" class="ml-1 bg-slate-200 px-1 rounded text-[10px]">0</span></button>
             <button id="tabCodigo" class="flex-shrink-0 px-3 py-3 text-xs text-center text-slate-500 hover:text-slate-700 transition">Código XML</button>
@@ -102,8 +106,19 @@
                 </div>
             </div>
 
+            <!-- Resultado visible de consultas (logos, etc.) -->
+            <div id="asistenteResultado" class="hidden mx-3 mt-2 mb-1 shrink-0 rounded-lg border border-violet-200 bg-white shadow-sm overflow-hidden">
+                <div class="px-3 py-2 bg-violet-50 border-b border-violet-100 flex items-center gap-2">
+                    <span id="asistenteResultadoBadge" class="text-[10px] px-1.5 py-0.5 rounded bg-violet-100 text-violet-800">consulta</span>
+                    <span id="asistenteResultadoTitulo" class="text-xs font-medium text-slate-700 truncate flex-1"></span>
+                    <button type="button" id="btnCerrarAsistenteResultado" class="text-slate-400 hover:text-slate-600 text-xs" title="Cerrar">✕</button>
+                </div>
+                <pre id="asistenteResultadoTexto" class="px-3 py-2 text-xs whitespace-pre-wrap font-sans text-slate-700 max-h-32 overflow-y-auto"></pre>
+                <div id="asistenteResultadoLogos" class="hidden px-3 pb-3 space-y-2"></div>
+            </div>
+
             <!-- Panel CRUD desplegables -->
-            <div id="panelDesplegablesCrud" class="border-b border-slate-200 bg-white flex flex-col max-h-[45%] min-h-0">
+            <div id="panelDesplegablesCrud" class="border-b border-slate-200 bg-white flex flex-col max-h-[32%] min-h-0 shrink-0">
                 <div class="px-3 py-2 border-b border-slate-100 flex items-center gap-2 flex-wrap">
                     <h3 class="text-xs font-semibold text-slate-700 shrink-0">
                         Desplegables <span id="cntDesplegables" class="text-orbeon-600">0</span>
@@ -130,7 +145,7 @@
                     </button>
                 </div>
             </div>
-            <div id="asistenteHistorial" class="flex-1 overflow-y-auto p-3 space-y-2 bg-slate-50 min-h-0">
+            <div id="asistenteHistorial" class="flex-1 overflow-y-auto p-3 space-y-2 bg-slate-50 min-h-[120px]">
                 <p class="text-slate-400 text-xs text-center py-4">Historial de instrucciones en lenguaje natural</p>
             </div>
         </div>
@@ -144,6 +159,29 @@
             <div id="listaSecciones" class="flex-1 overflow-y-auto p-4 space-y-3">
                 <p class="text-slate-400 text-sm text-center py-12">Sin secciones cargadas</p>
             </div>
+        </div>
+
+        <!-- Pestaña Dependencias de visibilidad -->
+        <div id="panelDependencias" class="flex-1 flex flex-col hidden overflow-hidden">
+            <div class="p-3 border-b border-slate-100 bg-gradient-to-r from-amber-50 to-orbeon-50 shrink-0">
+                <p class="text-xs text-slate-600 mb-2">
+                    Visibilidad condicional Orbeon (<code class="text-[10px]">xf:bind @relevant</code>).
+                    Edite la expresión para cambiar cuándo se activa cada sección en el XML exportado.
+                </p>
+                <div id="depResumen" class="flex flex-wrap gap-2 text-[10px] text-slate-500"></div>
+            </div>
+            <div class="p-3 border-b border-slate-100 shrink-0">
+                <input id="buscarDependencias" type="search" placeholder="Filtrar por sección, bind o disparador…"
+                       class="w-full text-sm border border-slate-300 rounded-md px-3 py-1.5 focus:ring-2 focus:ring-orbeon-500 outline-none">
+            </div>
+            <div id="depFeedback" class="hidden mx-3 mt-2 px-3 py-2 rounded-md text-xs border shrink-0"></div>
+            <div id="listaDependencias" class="flex-1 overflow-y-auto p-3 space-y-2 min-h-0">
+                <p class="text-slate-400 text-xs text-center py-8">Carga un XML para analizar dependencias</p>
+            </div>
+            <details class="border-t border-slate-200 bg-slate-50 shrink-0 max-h-40 overflow-y-auto">
+                <summary class="px-3 py-2 text-xs font-semibold text-slate-600 cursor-pointer">Glosario de disparadores</summary>
+                <div id="depGlosario" class="px-3 pb-3 text-[10px] text-slate-500 space-y-1"></div>
+            </details>
         </div>
 
         <!-- Pestaña Modificar JSON tipado -->
@@ -175,6 +213,23 @@
                 </button>
             </div>
         </div>
+
+        <!-- Panel CRUD contextual (logo, campo, sección) -->
+        <div id="panelEditorCrud" class="hidden shrink-0 border-t-2 border-orbeon-500 bg-white shadow-[0_-4px_12px_rgba(0,0,0,0.08)] flex flex-col max-h-[45%] min-h-0 z-10">
+            <div class="px-3 py-2 bg-orbeon-50 border-b border-orbeon-100 flex items-center gap-2 shrink-0">
+                <span class="text-[10px] px-1.5 py-0.5 rounded bg-orbeon-500 text-white shrink-0">CRUD</span>
+                <span id="editorCrudTitulo" class="text-xs font-semibold text-slate-800 truncate flex-1">Editando elemento</span>
+                <button type="button" id="editorCrudCerrar" class="text-slate-400 hover:text-slate-700 text-sm leading-none px-1" title="Cerrar">✕</button>
+            </div>
+            <p id="editorCrudAyuda" class="px-3 pt-2 text-[10px] text-slate-500 shrink-0"></p>
+            <div id="editorCrudForm" class="px-3 py-2 overflow-y-auto flex-1 min-h-0 space-y-2 text-xs"></div>
+            <div class="p-3 border-t border-slate-200 bg-slate-50 flex flex-wrap gap-2 shrink-0">
+                <button type="button" id="editorCrudIrXml" class="px-3 py-1.5 text-xs border border-slate-300 bg-white hover:bg-slate-100 rounded-md">Ver en XML</button>
+                <button type="button" id="editorCrudPreview" class="px-3 py-1.5 text-xs bg-amber-500 hover:bg-amber-600 text-white rounded-md font-medium">Previsualizar</button>
+                <button type="button" id="editorCrudAplicar" class="px-3 py-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-md font-medium">Aplicar al XML</button>
+                <button type="button" id="editorCrudDescartar" class="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-200 rounded-md hidden">Descartar vista previa</button>
+            </div>
+        </div>
     </section>
 
     <!-- Panel derecho: vista de diseño y PDF -->
@@ -186,7 +241,12 @@
 
         <!-- Mock WYSIWYG -->
         <div id="panelPreview" class="flex-1 flex flex-col overflow-hidden">
-            <div class="px-4 py-2 border-b border-slate-100">
+            <div id="bannerPreviewBorrador" class="hidden px-4 py-2 bg-amber-100 border-b border-amber-200 text-amber-900 text-xs flex flex-wrap items-center justify-center gap-2 shrink-0">
+                <span>Vista previa con cambios <strong>sin guardar</strong> en el XML</span>
+                <button type="button" id="bannerAplicarBorrador" class="px-2 py-0.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[11px]">Aplicar al XML</button>
+                <button type="button" id="bannerDescartarBorrador" class="px-2 py-0.5 bg-white border border-amber-300 hover:bg-amber-50 rounded text-[11px]">Descartar</button>
+            </div>
+            <div class="px-4 py-2 border-b border-slate-100 shrink-0">
                 <p class="text-xs text-slate-400">Simulación HTML del formulario según los componentes activos</p>
             </div>
             <div id="previewFormulario" class="flex-1 overflow-y-auto p-6 bg-gradient-to-b from-white to-slate-50">
@@ -292,8 +352,370 @@
     let filtroComparacion = 'TODOS';
     let filtroDesplegable = '';
     let desplegableExpandidoId = null;
+    let dependencias = null;
+    let filtroDependencias = '';
+    let dependenciaEditandoId = null;
+
+    const TIPO_VISIBILIDAD = {
+        siempre_visible: { label: 'Siempre visible', cls: 'bg-slate-100 text-slate-600' },
+        condicional: { label: 'Condicional', cls: 'bg-amber-100 text-amber-800' },
+        oculta_fija: { label: 'Oculta fija', cls: 'bg-red-100 text-red-700' },
+        visible_fija: { label: 'Visible fija', cls: 'bg-emerald-100 text-emerald-800' },
+        solo_pdf: { label: 'Solo PDF', cls: 'bg-violet-100 text-violet-800' }
+    };
 
     const $ = (sel) => document.querySelector(sel);
+
+    let editorCrudActivo = null;
+    let previewBorradorActivo = false;
+    let snapshotAntesPreview = null;
+    let ultimosLogosConsulta = [];
+
+    /* --- Navegación XML + editor CRUD contextual --- */
+    function buscarPosicionEnXml(terminos) {
+        const xml = $('#textareaXml').value || xmlActual || '';
+        const lista = Array.isArray(terminos) ? terminos : [terminos];
+        for (const t of lista) {
+            if (!t) continue;
+            const candidatos = [
+                `id="${t}"`, `id='${t}'`,
+                `<${t} `, `<${t}>`,
+                `name="${t}"`, `ref="${t}"`,
+                `<${t.replace(/-bind$/, '')}`
+            ];
+            for (const p of candidatos) {
+                const idx = xml.indexOf(p);
+                if (idx >= 0) return { idx, len: Math.min(p.length + 20, xml.length - idx), termino: t };
+            }
+        }
+        return null;
+    }
+
+    function irACodigoXml(terminos, cambiarPestaña = true) {
+        if (!xmlActual && !$('#textareaXml').value) {
+            mostrarToast('Carga un XML primero', 'error');
+            return false;
+        }
+        if (cambiarPestaña) cambiarTab('codigo');
+        const ta = $('#textareaXml');
+        if (!ta.value.trim()) ta.value = xmlActual;
+        const pos = buscarPosicionEnXml(terminos);
+        if (!pos) {
+            mostrarToast(`No localizado en XML: ${(terminos[0] || terminos)}`, 'info');
+            return false;
+        }
+        ta.focus();
+        const fin = Math.min(pos.idx + pos.len, ta.value.length);
+        ta.setSelectionRange(pos.idx, fin);
+        const lineas = ta.value.substring(0, pos.idx).split('\n').length;
+        ta.scrollTop = Math.max(0, (lineas - 4) * 16);
+        return true;
+    }
+
+    function anclasParaElemento(meta, tipo) {
+        if (meta.anchors?.length) return meta.anchors;
+        if (tipo === 'logo') {
+            return [meta.controlId, meta.imageTag, meta.imageTag + '-bind', meta.imageTag + '-control'].filter(Boolean);
+        }
+        if (tipo === 'campo' || tipo === 'desplegable') {
+            const fid = meta.fieldId || meta.resourceKey;
+            return [meta.controlId, meta.id, fid, fid + '-bind', fid + '-control'].filter(Boolean);
+        }
+        if (tipo === 'seccion' || tipo === 'dependencia') {
+            return [meta.sectionId, meta.bindId, meta.id].filter(Boolean);
+        }
+        return [meta.id].filter(Boolean);
+    }
+
+    function abrirEditorCrud(tipo, meta) {
+        editorCrudActivo = {
+            tipo,
+            meta: { ...meta },
+            anchors: anclasParaElemento(meta, tipo)
+        };
+        const titulo = meta.titulo || meta.label || meta.sectionTitulo || meta.id
+            || meta.fieldId || meta.imageTag || meta.sectionId || tipo;
+        $('#panelEditorCrud').classList.remove('hidden');
+        $('#editorCrudTitulo').textContent = titulo;
+        $('#editorCrudAyuda').textContent = 'Modifique los valores, pulse Previsualizar para ver el formulario sin guardar, o Aplicar al XML para confirmar.';
+        renderizarFormularioEditor();
+        irACodigoXml(editorCrudActivo.anchors, true);
+        mostrarToast(`Editor abierto · XML localizado`, 'info');
+    }
+
+    function cerrarEditorCrud() {
+        $('#panelEditorCrud').classList.add('hidden');
+        editorCrudActivo = null;
+    }
+
+    function campoEditor(label, id, value, opts = {}) {
+        const cls = `mt-0.5 w-full border rounded-md px-2 py-1.5 text-xs outline-none focus:ring-1 ${opts.readonly ? 'bg-slate-100 text-slate-500 border-slate-200' : 'border-slate-300 focus:ring-orbeon-500'}`;
+        const ro = opts.readonly ? 'readonly' : '';
+        const tipo = opts.type || 'text';
+        return `<label class="block">
+            <span class="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">${escaparHtml(label)}</span>
+            <input id="${id}" type="${tipo}" data-campo="${opts.campo || id}" value="${escaparHtml(value ?? '')}"
+                   ${ro} class="${cls}">
+        </label>`;
+    }
+
+    function renderizarFormularioEditor() {
+        const form = $('#editorCrudForm');
+        if (!editorCrudActivo) return;
+        const { tipo, meta } = editorCrudActivo;
+
+        if (tipo === 'logo') {
+            form.innerHTML = `
+                ${campoEditor('Tag imagen (instancia)', 'ed-imageTag', meta.imageTag || meta.tag, { readonly: true, campo: 'imageTag' })}
+                ${campoEditor('Control ID', 'ed-controlId', meta.controlId, { readonly: true, campo: 'controlId' })}
+                ${campoEditor('Sección', 'ed-sectionId', `${meta.sectionTitulo || ''} (${meta.sectionId || ''})`, { readonly: true })}
+                ${campoEditor('Ruta src', 'ed-src', meta.src || '', { campo: 'src' })}
+                ${campoEditor('Nombre archivo', 'ed-filename', meta.filename || '', { campo: 'filename' })}
+                ${campoEditor('Mediatype', 'ed-mediatype', meta.mediatype || 'image/png', { campo: 'mediatype' })}`;
+        } else if (tipo === 'campo' || tipo === 'desplegable') {
+            form.innerHTML = `
+                ${campoEditor('Field ID (fr-form-resources)', 'ed-fieldId', meta.fieldId || meta.resourceKey, { readonly: true, campo: 'fieldId' })}
+                ${campoEditor('Control ID', 'ed-controlId', meta.controlId || meta.id, { readonly: true })}
+                ${campoEditor('Label', 'ed-label', meta.label || '', { campo: 'label' })}
+                ${campoEditor('Hint', 'ed-hint', meta.hint || '', { campo: 'hint' })}
+                ${campoEditor('Alert', 'ed-alert', meta.alert || '', { campo: 'alert' })}`;
+        } else if (tipo === 'seccion' || tipo === 'dependencia') {
+            form.innerHTML = `
+                ${campoEditor('Sección ID', 'ed-sectionId', meta.sectionId || meta.id, { readonly: true, campo: 'sectionId' })}
+                ${campoEditor('Bind ID', 'ed-bindId', meta.bindId, { readonly: true, campo: 'bindId' })}
+                <label class="block">
+                    <span class="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Expresión relevant (visibilidad)</span>
+                    <textarea id="ed-relevant" data-campo="relevant" rows="3"
+                        class="mt-0.5 w-full border border-slate-300 rounded-md px-2 py-1.5 text-xs font-mono outline-none focus:ring-1 focus:ring-orbeon-500">${escaparHtml(meta.expresionRelevant || meta.relevant || '')}</textarea>
+                </label>
+                <p class="text-[10px] text-slate-400">Vacío = siempre visible (quitar relevant al aplicar si está vacío)</p>`;
+        }
+        $('#editorCrudDescartar').classList.toggle('hidden', !previewBorradorActivo);
+    }
+
+    function leerValorEditor(campo) {
+        const el = document.querySelector(`#editorCrudForm [data-campo="${campo}"]`);
+        return el ? el.value.trim() : '';
+    }
+
+    function recolectarCambiosEditor() {
+        if (!editorCrudActivo) return [];
+        const { tipo, meta } = editorCrudActivo;
+        const changes = [];
+
+        if (tipo === 'logo') {
+            const tag = leerValorEditor('imageTag') || meta.imageTag || meta.tag;
+            const src = leerValorEditor('src');
+            const filename = leerValorEditor('filename');
+            const mediatype = leerValorEditor('mediatype');
+            const ch = { type: 'update-image', imageTag: tag };
+            if (src) ch.src = src;
+            if (filename) ch.filename = filename;
+            if (mediatype) ch.mediatype = mediatype;
+            if (Object.keys(ch).length > 2) changes.push(ch);
+        } else if (tipo === 'campo' || tipo === 'desplegable') {
+            const fieldId = leerValorEditor('fieldId') || meta.fieldId || meta.resourceKey;
+            const label = leerValorEditor('label');
+            const hint = leerValorEditor('hint');
+            const alert = leerValorEditor('alert');
+            if (label !== (meta.label || '')) changes.push({ type: 'update-label', fieldId, label });
+            if (hint !== (meta.hint || '')) changes.push({ type: 'update-hint', fieldId, hint });
+            if (alert !== (meta.alert || '')) changes.push({ type: 'update-resource', fieldId, resourceType: 'alert', value: alert });
+        } else if (tipo === 'seccion' || tipo === 'dependencia') {
+            const bindId = leerValorEditor('bindId') || meta.bindId;
+            const sectionId = leerValorEditor('sectionId') || meta.sectionId || meta.id;
+            const relevant = leerValorEditor('relevant');
+            const orig = (meta.expresionRelevant || meta.relevant || '').trim();
+            if (relevant !== orig) {
+                if (!relevant) {
+                    changes.push({ type: 'update-section-relevant', bindId, sectionId, removeRelevant: true });
+                } else {
+                    changes.push({ type: 'update-section-relevant', bindId, sectionId, relevant });
+                }
+            }
+        }
+        return changes;
+    }
+
+    async function aplicarCambiosConXml(baseXml, changes) {
+        const res = await fetch(`${API}/modificar`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ xml: baseXml, changes })
+        });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.error || res.statusText);
+        }
+        return res.json();
+    }
+
+    async function sincronizarXml(xml) {
+        const res = await fetch(`${API}/sincronizar-codigo`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ xml })
+        });
+        if (!res.ok) throw new Error('Error al sincronizar');
+        return res.json();
+    }
+
+    function activarBannerPreview(activo) {
+        previewBorradorActivo = activo;
+        $('#bannerPreviewBorrador').classList.toggle('hidden', !activo);
+        $('#editorCrudDescartar').classList.toggle('hidden', !activo);
+    }
+
+    async function previsualizarEditorCrud() {
+        if (!editorCrudActivo || !xmlActual) return;
+        const changes = recolectarCambiosEditor();
+        if (!changes.length) {
+            mostrarToast('No hay cambios respecto al XML actual', 'info');
+            return;
+        }
+        try {
+            if (!previewBorradorActivo) {
+                snapshotAntesPreview = {
+                    componentes: JSON.parse(JSON.stringify(componentes)),
+                    estructura: estructura ? JSON.parse(JSON.stringify(estructura)) : null,
+                    dependencias: dependencias ? JSON.parse(JSON.stringify(dependencias)) : null
+                };
+            }
+            const baseXml = xmlActual;
+            const data = await aplicarCambiosConXml(baseXml, changes);
+            const sync = await sincronizarXml(data.xml);
+            componentes = sync.componentes || [];
+            estructura = sync.estructura || estructura;
+            dependencias = sync.dependencias || dependencias;
+            renderizarPreview(componentes);
+            renderizarSecciones();
+            renderizarDependencias();
+            activarBannerPreview(true);
+            cambiarTabPreview('preview');
+            mostrarToast('Vista previa actualizada — pulse Aplicar al XML para guardar', 'ok');
+        } catch (err) {
+            mostrarToast('Error en previsualización: ' + err.message, 'error');
+        }
+    }
+
+    async function aplicarEditorCrud() {
+        if (!editorCrudActivo) return;
+        const changes = recolectarCambiosEditor();
+        if (!changes.length) {
+            mostrarToast('Sin cambios que aplicar', 'info');
+            return;
+        }
+        try {
+            const data = await aplicarCambiosConXml(xmlActual, changes);
+            await finalizarAplicacionEditor(data);
+        } catch (err) {
+            mostrarToast('Error: ' + err.message, 'error');
+        }
+    }
+
+    async function finalizarAplicacionEditor(data) {
+        const sync = await sincronizarXml(data.xml);
+        procesarRespuesta(sync, false);
+        changeLog.push(...(data.applied || []));
+        renderizarChangelog();
+        snapshotAntesPreview = null;
+        activarBannerPreview(false);
+        if (editorCrudActivo) {
+            Object.assign(editorCrudActivo.meta, leerMetaActualizadaEditor());
+            renderizarFormularioEditor();
+        }
+        mostrarToast('Cambios aplicados al XML', 'ok');
+    }
+
+    function leerMetaActualizadaEditor() {
+        if (!editorCrudActivo) return {};
+        const t = editorCrudActivo.tipo;
+        if (t === 'logo') {
+            return { src: leerValorEditor('src'), filename: leerValorEditor('filename'), mediatype: leerValorEditor('mediatype') };
+        }
+        if (t === 'campo' || t === 'desplegable') {
+            return { label: leerValorEditor('label'), hint: leerValorEditor('hint'), alert: leerValorEditor('alert') };
+        }
+        return { expresionRelevant: leerValorEditor('relevant'), relevant: leerValorEditor('relevant') };
+    }
+
+    function descartarPreviewBorrador() {
+        if (snapshotAntesPreview) {
+            componentes = snapshotAntesPreview.componentes;
+            estructura = snapshotAntesPreview.estructura;
+            dependencias = snapshotAntesPreview.dependencias;
+            renderizarPreview();
+            renderizarSecciones();
+            renderizarDependencias();
+        }
+        snapshotAntesPreview = null;
+        activarBannerPreview(false);
+        mostrarToast('Vista previa descartada', 'info');
+    }
+
+    function navegarDesdeLogo(logo) {
+        abrirEditorCrud('logo', {
+            imageTag: logo.tag,
+            tag: logo.tag,
+            controlId: logo.controlId,
+            sectionId: logo.sectionId,
+            sectionTitulo: logo.sectionTitulo,
+            src: logo.src,
+            filename: logo.filename,
+            mediatype: logo.mediatype,
+            titulo: logo.tag || logo.controlId
+        });
+    }
+
+    function navegarDesdeComponente(comp) {
+        const fieldId = comp.metadatos?.resourceKey || comp.id.replace(/-control$/, '');
+        const esImg = ['image', 'static-attachment', 'image-attachment'].includes(comp.tipo);
+        if (esImg) {
+            const img = estructura?.imagenes?.find(i => i.tag === fieldId || comp.id.startsWith(i.tag));
+            navegarDesdeLogo({
+                tag: img?.tag || fieldId,
+                controlId: comp.id,
+                sectionId: comp.metadatos?.sectionId,
+                sectionTitulo: comp.metadatos?.sectionTitulo,
+                src: img?.src || comp.metadatos?.ref,
+                filename: img?.filename,
+                mediatype: img?.mediatype
+            });
+            return;
+        }
+        if (TIPOS_DESPLEGABLE.has(comp.tipo)) {
+            abrirEditorCrud('desplegable', {
+                fieldId, resourceKey: fieldId, controlId: comp.id, id: comp.id,
+                label: comp.label, hint: comp.hint, alert: comp.alert, titulo: comp.label || fieldId
+            });
+            return;
+        }
+        abrirEditorCrud('campo', {
+            fieldId, resourceKey: fieldId, controlId: comp.id, id: comp.id,
+            label: comp.label, hint: comp.hint, alert: comp.alert, titulo: comp.label || fieldId
+        });
+    }
+
+    function navegarDesdeDependencia(el) {
+        abrirEditorCrud(el.tipoElemento === 'grid' ? 'dependencia' : 'seccion', {
+            sectionId: el.id,
+            bindId: el.bindId,
+            id: el.id,
+            expresionRelevant: el.expresionRelevant,
+            relevant: el.expresionRelevant,
+            titulo: el.titulo || el.id
+        });
+    }
+
+    $('#editorCrudCerrar').addEventListener('click', cerrarEditorCrud);
+    $('#editorCrudIrXml').addEventListener('click', () => {
+        if (editorCrudActivo) irACodigoXml(editorCrudActivo.anchors, true);
+    });
+    $('#editorCrudPreview').addEventListener('click', () => previsualizarEditorCrud());
+    $('#editorCrudAplicar').addEventListener('click', () => aplicarEditorCrud());
+    $('#editorCrudDescartar').addEventListener('click', descartarPreviewBorrador);
+    $('#bannerAplicarBorrador').addEventListener('click', () => aplicarEditorCrud());
+    $('#bannerDescartarBorrador').addEventListener('click', descartarPreviewBorrador);
 
     function mostrarToast(mensaje, tipo = 'info') {
         const toast = $('#toast');
@@ -327,13 +749,13 @@
     }
 
     /* --- Pestañas panel izquierdo --- */
-    const tabsIzq = { guiado: 'tabGuiado', asistente: 'tabAsistente', secciones: 'tabSecciones', modificar: 'tabModificar', changelog: 'tabChangelog', codigo: 'tabCodigo' };
+    const tabsIzq = { guiado: 'tabGuiado', asistente: 'tabAsistente', secciones: 'tabSecciones', dependencias: 'tabDependencias', modificar: 'tabModificar', changelog: 'tabChangelog', codigo: 'tabCodigo' };
     Object.keys(tabsIzq).forEach(t => {
         document.getElementById(tabsIzq[t]).addEventListener('click', () => cambiarTab(t));
     });
 
     function cambiarTab(tab) {
-        const paneles = { guiado: 'panelGuiado', asistente: 'panelAsistente', secciones: 'panelSecciones', modificar: 'panelModificar', changelog: 'panelChangelog', codigo: 'panelCodigo' };
+        const paneles = { guiado: 'panelGuiado', asistente: 'panelAsistente', secciones: 'panelSecciones', dependencias: 'panelDependencias', modificar: 'panelModificar', changelog: 'panelChangelog', codigo: 'panelCodigo' };
         Object.entries(paneles).forEach(([k, id]) => {
             document.getElementById(id).classList.toggle('hidden', k !== tab);
             document.getElementById(tabsIzq[k]).classList.toggle('tab-active', k === tab);
@@ -343,6 +765,7 @@
 
     $('#buscarLista').addEventListener('input', (e) => { filtroLista = e.target.value.toLowerCase(); renderizarComponentes(); });
     $('#buscarSecciones').addEventListener('input', (e) => { filtroSecciones = e.target.value.toLowerCase(); renderizarSecciones(); });
+    $('#buscarDependencias').addEventListener('input', (e) => { filtroDependencias = e.target.value.toLowerCase(); renderizarDependencias(); });
 
     /* --- Pestañas panel derecho (Diseño / PDF) --- */
     $('#tabPreview').addEventListener('click', () => cambiarTabPreview('preview'));
@@ -382,7 +805,8 @@
             if (filtroLista && !texto.includes(filtroLista)) return;
             const esImagen = comp.tipo === 'image' || comp.tipo === 'static-attachment' || comp.tipo === 'image-attachment';
             const tarjeta = document.createElement('div');
-            tarjeta.className = 'border border-slate-200 rounded-lg p-4 hover:border-orbeon-500/40 transition bg-slate-50/50';
+            tarjeta.className = 'border border-slate-200 rounded-lg p-4 hover:border-orbeon-500/40 transition bg-slate-50/50 clickable-result';
+            tarjeta.title = 'Clic para editar en CRUD y ver XML';
             tarjeta.innerHTML = `
                 <div class="flex items-center justify-between mb-3">
                     <span class="text-xs font-mono text-orbeon-600 bg-orbeon-50 px-2 py-0.5 rounded">${escaparHtml(comp.id)}</span>
@@ -404,6 +828,10 @@
                            class="w-full border border-slate-300 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-orbeon-500 focus:border-orbeon-500 outline-none">
                 `}
             `;
+            tarjeta.addEventListener('click', (e) => {
+                if (e.target.closest('input')) return;
+                navegarDesdeComponente(comp);
+            });
             lista.appendChild(tarjeta);
             visibles++;
         });
@@ -444,10 +872,11 @@
             if (filtroSecciones && !camposFiltrados.length && !`${sec.titulo} ${sec.id}`.toLowerCase().includes(filtroSecciones)) return;
 
             const bloque = document.createElement('div');
-            bloque.className = 'border border-slate-200 rounded-lg overflow-hidden';
+            bloque.className = 'border border-slate-200 rounded-lg overflow-hidden clickable-result';
+            bloque.title = 'Clic en un campo para editar';
             const pdfBadge = sec.noPrintInPdf ? '<span class="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded ml-2">noprintinpdf</span>' : '';
             bloque.innerHTML = `
-                <div class="bg-slate-50 px-4 py-2 border-b border-slate-200 cursor-pointer flex items-center justify-between" onclick="this.nextElementSibling.classList.toggle('hidden')">
+                <div class="bg-slate-50 px-4 py-2 border-b border-slate-200 cursor-pointer flex items-center justify-between sec-header" data-section-id="${escaparHtml(sec.id)}" data-bind-id="${escaparHtml(sec.bind || '')}">
                     <div>
                         <span class="font-semibold text-sm text-slate-800">${escaparHtml(sec.titulo || sec.id)}</span>${pdfBadge}
                         <span class="text-xs text-slate-400 ml-2">${camposFiltrados.length} campos · ${sec.gridCount} grids</span>
@@ -456,7 +885,7 @@
                 </div>
                 <div class="divide-y divide-slate-100">
                     ${camposFiltrados.map(c => `
-                        <div class="px-4 py-2 text-xs hover:bg-orbeon-50/50">
+                        <div class="px-4 py-2 text-xs hover:bg-orbeon-50/50 cursor-pointer campo-seccion-item" data-comp-id="${escaparHtml(c.id)}">
                             <div class="flex justify-between gap-2">
                                 <span class="font-medium text-slate-700">${escaparHtml(c.label || c.id)}</span>
                                 <span class="text-slate-400 uppercase">${escaparHtml(c.tipo)}</span>
@@ -469,6 +898,24 @@
                     `).join('') || '<p class="p-3 text-slate-400 text-xs">Sin campos visibles</p>'}
                 </div>`;
             cont.appendChild(bloque);
+            bloque.querySelector('.sec-header')?.addEventListener('click', (e) => {
+                if (e.target.closest('.campo-seccion-item')) return;
+                const dep = dependencias?.elementos?.find(d => d.id === sec.id);
+                if (dep) {
+                    navegarDesdeDependencia(dep);
+                } else {
+                    abrirEditorCrud('seccion', {
+                        sectionId: sec.id, bind: sec.bind, bindId: sec.bind, id: sec.id,
+                        titulo: sec.titulo, expresionRelevant: ''
+                    });
+                }
+            });
+            bloque.querySelectorAll('.campo-seccion-item').forEach(row => {
+                row.addEventListener('click', () => {
+                    const comp = sec.componentes.find(c => c.id === row.dataset.compId);
+                    if (comp) navegarDesdeComponente(comp);
+                });
+            });
         });
 
         if (estructura.imagenes?.length) {
@@ -476,11 +923,21 @@
             imgBlock.className = 'border border-slate-200 rounded-lg p-4 mt-3 bg-slate-50';
             imgBlock.innerHTML = `<h3 class="text-sm font-semibold mb-2">Imágenes en instancia (${estructura.imagenes.length})</h3>` +
                 estructura.imagenes.map(img => `
-                    <div class="text-xs font-mono mb-2 p-2 bg-white rounded border">
+                    <div class="text-xs font-mono mb-2 p-2 bg-white rounded border clickable-result cursor-pointer hover:border-orbeon-400 img-instancia-item" data-tag="${escaparHtml(img.tag)}">
                         <strong>${escaparHtml(img.tag)}</strong> · ${escaparHtml(img.filename || 'sin filename')}<br>
                         <span class="text-slate-500 break-all">${escaparHtml(img.src || '(vacío)')}</span>
                     </div>`).join('');
             cont.appendChild(imgBlock);
+            imgBlock.querySelectorAll('.img-instancia-item').forEach(el => {
+                el.addEventListener('click', () => {
+                    const tag = el.dataset.tag;
+                    const logo = ultimosLogosConsulta.find(l => l.tag === tag)
+                        || { tag, controlId: tag + '-control', src: el.querySelector('.text-slate-500')?.textContent, filename: '' };
+                    const comp = componentes.find(c => c.id === tag + '-control' || c.metadatos?.resourceKey === tag);
+                    if (comp) navegarDesdeComponente(comp);
+                    else navegarDesdeLogo({ tag, controlId: tag + '-control', src: '', filename: '' });
+                });
+            });
         }
     }
 
@@ -614,11 +1071,12 @@
     });
 
     /* --- Renderizado mock WYSIWYG --- */
-    function renderizarPreview() {
+    function renderizarPreview(listaComp = null) {
+        const comps = listaComp || componentes;
         const contenedor = $('#previewContenido');
         const vacio = $('#previewVacio');
 
-        if (!componentes.length) {
+        if (!comps.length) {
             contenedor.classList.add('hidden');
             vacio.classList.remove('hidden');
             return;
@@ -631,10 +1089,10 @@
         const titulo = document.createElement('div');
         titulo.className = 'text-center mb-6 pb-4 border-b border-slate-200';
         titulo.innerHTML = `<h3 class="text-lg font-bold text-slate-800">Vista previa del formulario</h3>
-                            <p class="text-xs text-slate-400 mt-1">${componentes.length} componentes detectados</p>`;
+                            <p class="text-xs text-slate-400 mt-1">${comps.length} componentes detectados${previewBorradorActivo ? ' · <span class="text-amber-600">borrador</span>' : ''}</p>`;
         contenedor.appendChild(titulo);
 
-        componentes.forEach(comp => {
+        comps.forEach(comp => {
             const bloque = document.createElement('div');
             bloque.className = 'bg-white border border-slate-200 rounded-lg p-4 shadow-sm';
 
@@ -712,6 +1170,7 @@
     function procesarRespuesta(data, resetChangelog = true) {
         componentes = data.componentes || [];
         estructura = data.estructura || null;
+        dependencias = data.dependencias || null;
         xmlActual = data.xml || '';
         $('#textareaXml').value = xmlActual;
         if (resetChangelog) changeLog = [];
@@ -721,9 +1180,186 @@
         renderizarPreview();
         habilitarExportacion(true);
         renderizarDesplegablesAsistente();
+        renderizarDependencias();
         if (!tabPreviewActiva) {
             generarVistaPdf();
         }
+    }
+
+    /* --- Dependencias de visibilidad --- */
+    function mostrarFeedbackDependencia(mensaje, tipo = 'ok') {
+        const el = $('#depFeedback');
+        const estilos = {
+            ok: 'bg-emerald-50 border-emerald-200 text-emerald-800',
+            error: 'bg-red-50 border-red-200 text-red-800',
+            info: 'bg-blue-50 border-blue-200 text-blue-800'
+        };
+        el.className = `mx-3 mt-2 px-3 py-2 rounded-md text-xs border shrink-0 ${estilos[tipo] || estilos.info}`;
+        el.textContent = mensaje;
+        el.classList.remove('hidden');
+        if (tipo === 'ok') setTimeout(() => el.classList.add('hidden'), 5000);
+    }
+
+    async function aplicarCambioXml(changes, mensajeExito) {
+        if (!xmlActual) throw new Error('No hay XML cargado');
+        const res = await fetch(`${API}/modificar`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ xml: xmlActual, changes })
+        });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.error || res.statusText);
+        }
+        const data = await res.json();
+        const fallos = (data.applied || []).filter(a => a.startsWith('✗'));
+        if (fallos.length) throw new Error(fallos.join('; '));
+        const sync = await (await fetch(`${API}/sincronizar-codigo`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ xml: data.xml })
+        })).json();
+        procesarRespuesta(sync, false);
+        changeLog.push(...(data.applied || []));
+        renderizarChangelog();
+        if (mensajeExito) {
+            mostrarToast(mensajeExito, 'ok');
+        }
+        return data;
+    }
+
+    function renderizarDependencias() {
+        const lista = $('#listaDependencias');
+        const resumen = $('#depResumen');
+        const glosarioEl = $('#depGlosario');
+
+        if (!dependencias || !dependencias.elementos?.length) {
+            lista.innerHTML = '<p class="text-slate-400 text-xs text-center py-8">Carga un XML para analizar dependencias</p>';
+            resumen.innerHTML = '';
+            glosarioEl.innerHTML = '';
+            return;
+        }
+
+        resumen.innerHTML = `
+            <span class="px-2 py-0.5 bg-white rounded border border-slate-200">${dependencias.totalSecciones} secciones</span>
+            <span class="px-2 py-0.5 bg-amber-50 rounded border border-amber-200 text-amber-800">${dependencias.totalCondicionales} condicionales</span>
+            <span class="px-2 py-0.5 bg-red-50 rounded border border-red-200 text-red-700">${dependencias.totalOcultas} ocultas fijas</span>`;
+
+        const glosario = dependencias.glosarioDisparadores || {};
+        glosarioEl.innerHTML = Object.entries(glosario).map(([k, v]) =>
+            `<div><span class="font-mono text-slate-700">$${escaparHtml(k)}</span> — ${escaparHtml(v)}</div>`
+        ).join('') || '<p class="text-slate-400">Sin disparadores referenciados</p>';
+
+        const filtro = filtroDependencias.toLowerCase();
+        const items = dependencias.elementos.filter(el => {
+            if (!filtro) return true;
+            const blob = `${el.id} ${el.bindId} ${el.titulo} ${el.expresionRelevant || ''} ${(el.dependeDe || []).join(' ')}`.toLowerCase();
+            return blob.includes(filtro);
+        });
+
+        if (!items.length) {
+            lista.innerHTML = '<p class="text-slate-400 text-xs text-center py-6">Sin coincidencias</p>';
+            return;
+        }
+
+        lista.innerHTML = items.map(el => {
+            const tv = TIPO_VISIBILIDAD[el.tipoVisibilidad] || TIPO_VISIBILIDAD.condicional;
+            const deps = (el.descripcionesDependencias || []).map((d, i) =>
+                `<span class="inline-block px-1.5 py-0.5 bg-orbeon-50 text-orbeon-700 rounded text-[10px] mr-1 mb-1" title="$${escaparHtml((el.dependeDe || [])[i] || '')}">${escaparHtml(d)}</span>`
+            ).join('');
+            const expr = el.expresionRelevant
+                ? `<pre class="text-[10px] font-mono bg-slate-900 text-amber-100 p-2 rounded mt-2 overflow-x-auto whitespace-pre-wrap">${escaparHtml(el.expresionRelevant)}</pre>`
+                : '<p class="text-[10px] text-slate-400 mt-1 italic">Sin atributo relevant (siempre visible en Orbeon)</p>';
+            const editando = dependenciaEditandoId === el.id;
+            const padre = el.seccionPadreId
+                ? `<span class="text-[10px] text-slate-400">↳ dentro de ${escaparHtml(el.seccionPadreId)}</span>` : '';
+            const formEdit = editando ? `
+                <div class="mt-3 pt-3 border-t border-slate-200 space-y-2">
+                    <label class="block text-[10px] font-semibold text-slate-600">Expresión relevant (XPath)</label>
+                    <textarea id="depExpr-${escaparHtml(el.id)}" rows="3"
+                        class="w-full text-xs font-mono border border-slate-300 rounded-md px-2 py-1.5 focus:ring-1 focus:ring-orbeon-500 outline-none">${escaparHtml(el.expresionRelevant || '')}</textarea>
+                    <div class="flex flex-wrap gap-1">
+                        <button type="button" class="dep-preset text-[10px] px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded" data-id="${escaparHtml(el.id)}" data-expr="">Siempre visible (quitar)</button>
+                        <button type="button" class="dep-preset text-[10px] px-2 py-1 bg-red-50 hover:bg-red-100 text-red-700 rounded" data-id="${escaparHtml(el.id)}" data-expr="false()">Oculta fija</button>
+                        <button type="button" class="dep-preset text-[10px] px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded" data-id="${escaparHtml(el.id)}" data-expr="true()">Visible fija</button>
+                    </div>
+                    <div class="flex gap-2">
+                        <button type="button" class="dep-guardar px-3 py-1.5 bg-orbeon-500 hover:bg-orbeon-600 text-white text-xs rounded-md"
+                            data-bind="${escaparHtml(el.bindId)}" data-section="${escaparHtml(el.id)}">Guardar en XML</button>
+                        <button type="button" class="dep-cancelar px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-xs rounded-md">Cancelar</button>
+                    </div>
+                </div>` : '';
+
+            return `
+                <article class="dep-item border border-slate-200 rounded-lg p-3 bg-white shadow-sm clickable-result cursor-pointer hover:border-orbeon-300" data-dep-id="${escaparHtml(el.id)}" title="Clic para editor CRUD + XML">
+                    <div class="flex items-start gap-2">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <h4 class="text-xs font-semibold text-slate-800 truncate">${escaparHtml(el.titulo || el.id)}</h4>
+                                <span class="text-[10px] px-1.5 py-0.5 rounded ${tv.cls}">${tv.label}</span>
+                                ${el.tipoElemento === 'grid' ? '<span class="text-[10px] bg-slate-100 px-1 rounded">grid</span>' : ''}
+                            </div>
+                            <p class="text-[10px] font-mono text-slate-500 mt-0.5">${escaparHtml(el.id)} · bind: ${escaparHtml(el.bindId)}</p>
+                            ${padre}
+                            ${expr}
+                            ${deps ? `<div class="mt-2 flex flex-wrap">${deps}</div>` : ''}
+                            ${formEdit}
+                        </div>
+                        ${editando ? '' : `<button type="button" class="dep-editar shrink-0 text-[10px] px-2 py-1 border border-orbeon-500 text-orbeon-600 hover:bg-orbeon-50 rounded" data-id="${escaparHtml(el.id)}">Editar aquí</button>`}
+                    </div>
+                </article>`;
+        }).join('');
+
+        lista.querySelectorAll('.dep-item').forEach(art => {
+            art.addEventListener('click', (e) => {
+                if (e.target.closest('button, textarea, .dep-preset')) return;
+                const el = items.find(x => x.id === art.dataset.depId);
+                if (el) navegarDesdeDependencia(el);
+            });
+        });
+        lista.querySelectorAll('.dep-editar').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const el = items.find(x => x.id === btn.dataset.id);
+                if (el) navegarDesdeDependencia(el);
+                else {
+                    dependenciaEditandoId = btn.dataset.id;
+                    renderizarDependencias();
+                }
+            });
+        });
+        lista.querySelectorAll('.dep-cancelar').forEach(btn => {
+            btn.addEventListener('click', () => {
+                dependenciaEditandoId = null;
+                renderizarDependencias();
+            });
+        });
+        lista.querySelectorAll('.dep-preset').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const ta = document.getElementById(`depExpr-${btn.dataset.id}`);
+                if (ta) ta.value = btn.dataset.expr;
+            });
+        });
+        lista.querySelectorAll('.dep-guardar').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const sectionId = btn.dataset.section;
+                const bindId = btn.dataset.bind;
+                const ta = document.getElementById(`depExpr-${sectionId}`);
+                const expr = (ta?.value ?? '').trim();
+                try {
+                    const change = expr
+                        ? { type: 'update-section-relevant', bindId, sectionId, relevant: expr }
+                        : { type: 'update-section-relevant', bindId, sectionId, removeRelevant: true };
+                    await aplicarCambioXml([change], `Dependencia actualizada: ${sectionId}`);
+                    dependenciaEditandoId = null;
+                    mostrarFeedbackDependencia(`Guardado: ${sectionId}`, 'ok');
+                    renderizarDependencias();
+                } catch (err) {
+                    mostrarFeedbackDependencia(err.message, 'error');
+                    mostrarToast(err.message, 'error');
+                }
+            });
+        });
     }
 
     /* --- Asistente lenguaje natural --- */
@@ -754,29 +1390,7 @@
     }
 
     async function aplicarCambioDesplegable(changes, mensajeExito) {
-        if (!xmlActual) throw new Error('No hay XML cargado');
-        const res = await fetch(`${API}/modificar`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ xml: xmlActual, changes })
-        });
-        if (!res.ok) {
-            const err = await res.json().catch(() => ({}));
-            throw new Error(err.error || res.statusText);
-        }
-        const data = await res.json();
-        const fallos = (data.applied || []).filter(a => a.startsWith('✗'));
-        if (fallos.length) {
-            throw new Error(fallos.join('; '));
-        }
-        const sync = await (await fetch(`${API}/sincronizar-codigo`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ xml: data.xml })
-        })).json();
-        procesarRespuesta(sync, false);
-        changeLog.push(...(data.applied || []));
-        renderizarChangelog();
+        const data = await aplicarCambioXml(changes, null);
         mostrarFeedbackDesplegable(mensajeExito, 'ok');
         mostrarToast(mensajeExito, 'ok');
         return data;
@@ -868,14 +1482,17 @@
             }
 
             card.innerHTML = `
-                <button type="button" class="btn-toggle-desplegable w-full px-3 py-2 flex items-center gap-2 text-left hover:bg-slate-50 transition">
-                    <span class="text-slate-400 text-xs w-4">${expandido ? '▼' : '▶'}</span>
-                    <div class="flex-1 min-w-0">
-                        <div class="text-xs font-medium text-slate-800 truncate">${escaparHtml(comp.label || fieldId)}</div>
-                        <div class="text-[10px] font-mono text-slate-400 truncate">${escaparHtml(fieldId)}</div>
-                    </div>
-                    ${badge}
-                </button>
+                <div class="flex items-stretch border-b border-slate-100">
+                    <button type="button" class="btn-toggle-desplegable flex-1 px-3 py-2 flex items-center gap-2 text-left hover:bg-slate-50 transition">
+                        <span class="text-slate-400 text-xs w-4">${expandido ? '▼' : '▶'}</span>
+                        <div class="flex-1 min-w-0">
+                            <div class="text-xs font-medium text-slate-800 truncate">${escaparHtml(comp.label || fieldId)}</div>
+                            <div class="text-[10px] font-mono text-slate-400 truncate">${escaparHtml(fieldId)}</div>
+                        </div>
+                        ${badge}
+                    </button>
+                    <button type="button" class="btn-xml-desplegable shrink-0 px-2 text-[10px] border-l border-slate-200 text-orbeon-600 hover:bg-orbeon-50" title="Editor CRUD + XML">XML</button>
+                </div>
                 ${cuerpo}`;
 
             lista.appendChild(card);
@@ -884,6 +1501,10 @@
             btnToggle.addEventListener('click', () => {
                 desplegableExpandidoId = expandido ? null : comp.id;
                 renderizarDesplegablesAsistente();
+            });
+            card.querySelector('.btn-xml-desplegable')?.addEventListener('click', (e) => {
+                e.stopPropagation();
+                navegarDesdeComponente(comp);
             });
 
             if (expandido && !dinamico) {
@@ -963,6 +1584,7 @@
         if (hist.querySelector('p.text-center')) {
             hist.innerHTML = '';
         }
+        const textoRespuesta = (respuesta != null && String(respuesta).trim()) ? String(respuesta) : '(Sin texto de respuesta)';
         const bloque = document.createElement('div');
         const esOk = ejecutado && !esError;
         const borderCls = esError ? 'border-red-300' : esOk ? 'border-emerald-300' : 'border-slate-200';
@@ -976,17 +1598,120 @@
                 <span class="text-[10px] px-1.5 py-0.5 rounded ${badge} shrink-0">${icono} ${escaparHtml(intencion || 'consulta')}</span>
                 <p class="text-slate-700 flex-1 text-xs">🗣 ${escaparHtml(instruccion)}</p>
             </div>
-            <pre class="px-3 py-2 text-xs whitespace-pre-wrap font-sans ${esError ? 'bg-red-50 text-red-700' : 'bg-slate-50 text-slate-600'}">${escaparHtml(respuesta)}</pre>`;
+            <pre class="px-3 py-2 text-xs whitespace-pre-wrap font-sans ${esError ? 'bg-red-50 text-red-700' : 'bg-slate-50 text-slate-600'}">${escaparHtml(textoRespuesta)}</pre>`;
         hist.appendChild(bloque);
         hist.scrollTop = hist.scrollHeight;
     }
 
-    async function ejecutarAsistente() {
-        const instruccion = $('#inputAsistente').value.trim();
+    function resolverItemsNavegablesConsulta(data) {
+        const int = data?.intencion || '';
+        if (int === 'consulta-desplegables') {
+            return obtenerDesplegables().map(c => ({ tipo: 'comp', payload: c }));
+        }
+        if (int === 'consulta-opciones-desplegable' || int === 'consulta-opciones-dinamicas') {
+            const m = (data.respuesta || '').match(/\(([a-zA-Z0-9_.-]+)\)/);
+            if (m) {
+                const comp = componentes.find(c => c.id === m[1]);
+                if (comp) return [{ tipo: 'comp', payload: comp }];
+            }
+        }
+        return [];
+    }
+
+    function htmlTarjetaAsistenteNav(titulo, linea2, linea3, hint = 'Clic para abrir editor CRUD y localizar en XML') {
+        return `<div class="asistente-nav-card rounded-md border border-slate-200 bg-slate-50 p-2 text-[11px] clickable-result cursor-pointer hover:border-orbeon-400 hover:bg-orbeon-50/30" title="${escaparHtml(hint)}">
+            <p class="font-semibold text-orbeon-700">${escaparHtml(titulo)} → editar</p>
+            ${linea2 ? `<p class="text-slate-600 mt-0.5">${linea2}</p>` : ''}
+            ${linea3 ? `<p class="text-slate-500 truncate font-mono text-[10px]">${escaparHtml(linea3)}</p>` : ''}
+        </div>`;
+    }
+
+    function enlazarTarjetasAsistente(cont, items) {
+        cont.querySelectorAll('.asistente-nav-card').forEach((card, idx) => {
+            const item = items[idx];
+            if (!item) return;
+            card.addEventListener('click', () => {
+                if (item.tipo === 'logo') navegarDesdeLogo(item.payload);
+                else if (item.tipo === 'comp') navegarDesdeComponente(item.payload);
+                else if (item.tipo === 'seccion') navegarDesdeDependencia(item.payload);
+            });
+        });
+    }
+
+    function mostrarResultadoAsistente(instruccion, data, esError = false) {
+        const panel = $('#asistenteResultado');
+        const badge = $('#asistenteResultadoBadge');
+        const titulo = $('#asistenteResultadoTitulo');
+        const texto = $('#asistenteResultadoTexto');
+        const logosCont = $('#asistenteResultadoLogos');
+
+        panel.classList.remove('hidden');
+        badge.textContent = esError ? 'error' : (data?.intencion || 'consulta');
+        badge.className = `text-[10px] px-1.5 py-0.5 rounded shrink-0 ${
+            esError ? 'bg-red-100 text-red-800' : 'bg-violet-100 text-violet-800'}`;
+        titulo.textContent = instruccion;
+
+        const respuesta = esError
+            ? (data?.message || data || 'Error desconocido')
+            : ((data?.respuesta != null && String(data.respuesta).trim())
+                ? data.respuesta
+                : 'Consulta completada sin texto de respuesta.');
+        texto.textContent = respuesta;
+        texto.className = `px-3 py-2 text-xs whitespace-pre-wrap font-sans max-h-40 overflow-y-auto ${
+            esError ? 'text-red-700 bg-red-50' : 'text-slate-700'}`;
+
+        const logos = !esError && Array.isArray(data?.logos) ? data.logos : [];
+        ultimosLogosConsulta = logos;
+        const tarjetas = [];
+        logos.forEach(l => tarjetas.push({
+            tipo: 'logo',
+            payload: l,
+            html: htmlTarjetaAsistenteNav(
+                l.tag || l.controlId || 'logo',
+                `Posición global: <strong>${l.posicionGlobal ?? '—'}</strong>${l.posicionEnSeccion > 0 ? ` · En sección: <strong>${l.posicionEnSeccion}</strong>` : ''}`,
+                `${l.sectionTitulo || l.sectionId || ''}${l.filename ? ' · ' + l.filename : ''}${l.controlId ? ' · ' + l.controlId : ''}`
+            )
+        }));
+        if (!tarjetas.length && !esError) {
+            resolverItemsNavegablesConsulta(data).forEach(it => {
+                const c = it.payload;
+                const fieldId = c.metadatos?.resourceKey || c.id?.replace(/-control$/, '') || c.id;
+                tarjetas.push({
+                    tipo: 'comp',
+                    payload: c,
+                    html: htmlTarjetaAsistenteNav(
+                        c.label || fieldId,
+                        `Tipo: <strong>${escaparHtml(c.tipo)}</strong>${c.items?.length ? ` · ${c.items.length} opciones` : ''}`,
+                        fieldId
+                    )
+                });
+            });
+        }
+        if (tarjetas.length) {
+            logosCont.classList.remove('hidden');
+            logosCont.innerHTML = tarjetas.map(t => t.html).join('');
+            enlazarTarjetasAsistente(logosCont, tarjetas);
+        } else {
+            logosCont.classList.add('hidden');
+            logosCont.innerHTML = '';
+        }
+
+        panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function ocultarResultadoAsistente() {
+        $('#asistenteResultado').classList.add('hidden');
+    }
+
+    $('#btnCerrarAsistenteResultado')?.addEventListener('click', ocultarResultadoAsistente);
+
+    async function ejecutarAsistente(instruccionExplicita) {
+        const instruccion = (typeof instruccionExplicita === 'string' ? instruccionExplicita : $('#inputAsistente').value).trim();
         if (!instruccion) {
             mostrarToast('Escribe una instrucción', 'error');
             return;
         }
+        $('#inputAsistente').value = instruccion;
         if (!xmlActual) {
             mostrarToast('Carga un XML primero', 'error');
             return;
@@ -1004,6 +1729,7 @@
                 throw new Error(err.error || res.statusText);
             }
             const data = await res.json();
+            mostrarResultadoAsistente(instruccion, data, false);
             agregarMensajeAsistente(instruccion, data.respuesta, data.ejecutado, data.intencion, false);
             if (data.ejecutado && data.xml) {
                 procesarRespuesta({
@@ -1023,6 +1749,7 @@
             }
             $('#inputAsistente').value = '';
         } catch (err) {
+            mostrarResultadoAsistente(instruccion, { message: err.message }, true);
             agregarMensajeAsistente(instruccion, err.message, false, 'error', true);
             mostrarToast('Error: ' + err.message, 'error');
         }
@@ -1033,17 +1760,17 @@
         if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) ejecutarAsistente();
     });
     document.querySelectorAll('.sugerencia-ia').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const texto = btn.textContent;
+        btn.addEventListener('click', async () => {
+            const texto = btn.textContent.trim();
+            cambiarTab('asistente');
             if (texto === 'Listar desplegables') {
-                cambiarTab('asistente');
+                ocultarResultadoAsistente();
                 desplegableExpandidoId = null;
                 renderizarDesplegablesAsistente();
                 $('#buscarDesplegable').focus();
                 mostrarFeedbackDesplegable(`${obtenerDesplegables().length} desplegables detectados. Pulsa ▶ para ver opciones y editar.`, 'info');
             } else {
-                $('#inputAsistente').value = texto;
-                cambiarTab('asistente');
+                await ejecutarAsistente(texto);
             }
         });
     });

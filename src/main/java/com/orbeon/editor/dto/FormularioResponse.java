@@ -1,5 +1,6 @@
 package com.orbeon.editor.dto;
 
+import com.orbeon.editor.model.AnalisisDependencias;
 import com.orbeon.editor.model.ComponenteFormulario;
 import com.orbeon.editor.model.EstructuraFormulario;
 
@@ -10,6 +11,7 @@ public class FormularioResponse {
     private List<ComponenteFormulario> componentes;
     private String xml;
     private EstructuraFormulario estructura;
+    private AnalisisDependencias dependencias;
 
     public FormularioResponse() {
     }
@@ -41,5 +43,13 @@ public class FormularioResponse {
 
     public void setEstructura(EstructuraFormulario estructura) {
         this.estructura = estructura;
+    }
+
+    public AnalisisDependencias getDependencias() {
+        return dependencias;
+    }
+
+    public void setDependencias(AnalisisDependencias dependencias) {
+        this.dependencias = dependencias;
     }
 }

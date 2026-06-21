@@ -12,6 +12,8 @@ Editor visual de plantillas XML de **Orbeon Form Runner** para lectura, edición
 | [04 — Documentación de desarrollador](04-documentacion-desarrollador.md) | Arquitectura, API REST, modelo de datos, despliegue |
 | [05 — APIs y dependencias externas](05-apis-externas.md) | Qué servicios usa o referencia la aplicación (JCYL, CDN, etc.) |
 | [06 — HOWTO arranque y CRUD](06-howto-arranque-y-crud.md) | Cómo arrancar el servidor y hacer CRUD (labels, hints, desplegables…) |
+| [07 — Dependencias de secciones](07-dependencias-secciones.md) | Visibilidad condicional (`relevant`), pestaña Dependencias y CRUD |
+| [08 — Editor CRUD contextual y preview](08-editor-crud-contextual-y-preview.md) | Clic en resultados → XML + CRUD + previsualizar antes de guardar |
 | [Diagramas UML](diagramas/) | Fuentes PlantUML (casos de uso, clases, componentes, secuencia) |
 
 ## Stack tecnológico
@@ -42,6 +44,8 @@ Guía detallada: **[06 — HOWTO arranque y CRUD](06-howto-arranque-y-crud.md)**
 - Vista diseño, PDF mock, comparación entre versiones
 - Motor de cambios JSON (`changes[]`)
 - **Asistente en lenguaje natural** (pestaña «Asistente»): logos, desplegables CRUD, labels/hints
+- **Dependencias de secciones** (pestaña «Dependencias»): análisis y CRUD de `xf:bind @relevant`
+- **Editor CRUD contextual**: clic en logos, campos, secciones o dependencias → XML localizado + previsualización antes de guardar
 - Análisis de logos con posición en sección
 
 Ver [05 — APIs externas](05-apis-externas.md) para el detalle de dependencias de red.

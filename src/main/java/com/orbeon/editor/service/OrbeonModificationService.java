@@ -67,8 +67,49 @@ public class OrbeonModificationService {
             case "update-select-item" -> updateSelectItem(doc, change);
             case "remove-select-item" -> removeSelectItem(doc, change);
             case "add-image" -> addImage(doc, change);
+            case "update-section-relevant" -> updateSectionRelevant(doc, change);
             default -> throw new IllegalArgumentException("Tipo desconocido: " + type);
         };
+    }
+
+    /**
+     * Actualiza la expresión {@code relevant} del bind asociado a una sección o grid.
+     * Permite activar/desactivar visibilidad condicional en el XML Orbeon.
+     */
+    private String updateSectionRelevant(Document doc, Map<String, Object> change) {
+        String bindId = (String) change.get("bindId");
+        String sectionId = (String) change.get("sectionId");
+        if ((bindId == null || bindId.isBlank()) && sectionId != null && !sectionId.isBlank()) {
+            Element section = OrbeonXmlUtil.buscarPorId(doc, sectionId);
+            if (section == null) {
+                throw new IllegalArgumentException("Sección/grid no encontrado: " + sectionId);
+            }
+            bindId = section.getAttribute("bind");
+            if (bindId.isBlank()) {
+                throw new IllegalArgumentException("Sin atributo bind en: " + sectionId);
+            }
+        }
+        if (bindId == null || bindId.isBlank()) {
+            throw new IllegalArgumentException("bindId o sectionId es obligatorio");
+        }
+
+        Element bindEl = OrbeonXmlUtil.buscarPorId(doc, bindId);
+        if (bindEl == null) {
+            throw new IllegalArgumentException("Bind no encontrado: " + bindId);
+        }
+
+        boolean quitar = Boolean.TRUE.equals(change.get("removeRelevant"));
+        if (quitar) {
+            bindEl.removeAttribute("relevant");
+            return "Relevant eliminado (siempre visible): " + bindId;
+        }
+
+        String relevant = (String) change.get("relevant");
+        if (relevant == null) {
+            throw new IllegalArgumentException("El campo 'relevant' es obligatorio (o use removeRelevant: true)");
+        }
+        bindEl.setAttribute("relevant", relevant.trim());
+        return "Relevant actualizado en " + bindId + " → " + relevant.trim();
     }
 
     private String updateLabel(Document doc, Map<String, Object> change) {
@@ -448,7 +489,8 @@ public class OrbeonModificationService {
                         "add-select-item → fieldId, label, value",
                         "update-select-item → fieldId, value, label?, newValue?",
                         "remove-select-item → fieldId, value",
-                        "add-image       → imageTag, src?, filename?, mediatype?, sectionId?, label?"
+                        "add-image       → imageTag, src?, filename?, mediatype?, sectionId?, label?",
+                        "update-section-relevant → bindId|sectionId, relevant | removeRelevant:true"
                 ),
                 "exampleFile", Map.of("changes", List.of(
                         Map.of("type", "update-label", "fieldId", "personaFisica-nombre", "label", "Nombre completo"),

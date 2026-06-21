@@ -211,9 +211,9 @@ flowchart LR
 | **Actor** | Analista, Desarrollador, Integrador |
 | **Descripción** | Consultar o modificar el XML escribiendo instrucciones en español. |
 | **Precondiciones** | XML cargado (para modificaciones). |
-| **Flujo principal** | 1. Usuario abre pestaña «Asistente».<br>2. Escribe instrucción (ej. «¿Cuántos logos tiene?»).<br>3. `POST /api/formulario/lenguaje-natural`.<br>4. Sistema interpreta intención, aplica `changes[]` si procede.<br>5. Muestra respuesta en historial y actualiza UI. |
+| **Flujo principal** | 1. Usuario abre pestaña «Asistente».<br>2. Escribe instrucción (ej. «¿Cuántos logos tiene?»).<br>3. `POST /api/formulario/lenguaje-natural`.<br>4. Sistema interpreta intención, aplica `changes[]` si procede.<br>5. Muestra respuesta en panel visible y tarjetas clicables; historial de chat.<br>6. Clic en tarjeta → editor CRUD + XML localizado (CU-13). |
 | **Extensiones** | Logos, desplegables CRUD, labels/hints. |
-| **Requisitos** | RF-050 a RF-058, RF-046 |
+| **Requisitos** | RF-050 a RF-058, RF-065, RF-046 |
 
 ---
 
@@ -226,6 +226,20 @@ flowchart LR
 | **Descripción** | Obtener inventario estructurado de logos/imágenes del formulario. |
 | **Flujo principal** | `POST /api/formulario/analizar-logos` con `{ xml }` → `{ total, descripcion, logos[] }`. |
 | **Requisitos** | RF-051, RF-047 |
+
+---
+
+## CU-13 — Editor CRUD contextual con previsualización
+
+| Campo | Valor |
+|-------|-------|
+| **ID** | CU-13 |
+| **Actor** | Analista, Desarrollador |
+| **Descripción** | Editar un elemento del formulario (logo, campo, sección) navegando desde un resultado de la UI, con previsualización antes de confirmar en el XML. |
+| **Precondiciones** | XML cargado. |
+| **Flujo principal** | 1. Usuario pulsa un resultado (tarjeta Asistente, componente en Lista, sección, dependencia o imagen).<br>2. UI cambia a Código XML con fragmento seleccionado.<br>3. Se muestra `#panelEditorCrud` con campos editables.<br>4. Usuario modifica valores → **Previsualizar** → Vista Diseño con borrador (banner ámbar).<br>5. Usuario **Aplica al XML** o **Descarta** vista previa.<br>6. Changelog y vistas se actualizan si aplicó. |
+| **Flujos alternativos** | **Ver en XML** sin cambiar pestaña activa del panel derecho; edición inline en Dependencias sin pasar por preview. |
+| **Requisitos** | RF-060 a RF-065 |
 
 ---
 
@@ -243,5 +257,6 @@ flowchart LR
 | CU-08 | RF-030–RF-034 |
 | CU-09 | RF-005 |
 | CU-10 | RF-025 |
-| CU-11 | RF-050–RF-058 |
+| CU-11 | RF-050–RF-058, RF-065 |
 | CU-12 | RF-051, RF-047 |
+| CU-13 | RF-060–RF-065 |

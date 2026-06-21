@@ -150,16 +150,31 @@ Devuelve `EstructuraFormulario` con lista de `SeccionFormulario`, cada una con c
 | `update-select-item` | `fieldId`, `value`, `label?`, `newValue?` |
 | `remove-select-item` | `fieldId`, `value` |
 | `add-image` | `imageTag`, `src?`, `filename?`, `mediatype?`, `sectionId?`, `label?` |
+| `update-section-relevant` | `bindId` o `sectionId`, `relevant` \| `removeRelevant: true` |
 
-### 4.5 `OrbeonCompareService`
+### 4.5 `OrbeonDependencyService`
+
+**Responsabilidad:** Analizar visibilidad condicional de secciones/grids (`xf:bind @relevant`), extraer referencias `$variable` y clasificar tipo de visibilidad.
+
+| Método | Descripción |
+|--------|-------------|
+| `analizar(xml)` | `AnalisisDependencias` con lista de elementos y glosario |
+| `clasificar(expresion)` | `siempre_visible`, `condicional`, `oculta_fija`, etc. |
+| `extraerReferencias(expresion)` | Lista de binds referenciados (`$documentoIdent-nifSol`, …) |
+
+**API:** `POST /api/formulario/analizar-dependencias` — también incluido en respuesta de `/cargar`.
+
+Ver [07 — Dependencias de secciones](07-dependencias-secciones.md).
+
+### 4.6 `OrbeonCompareService`
 
 Compara dos listas de componentes indexadas por `id`. Estados: `ANADIDO`, `ELIMINADO`, `MODIFICADO`. Campos comparados: label, hint, alert, tipo, appearance.
 
-### 4.6 `OrbeonPdfService`
+### 4.7 `OrbeonPdfService`
 
 Genera PDF con OpenPDF. Respeta `class="noprintinpdf"`. Agrupa por secciones. **No** invoca Orbeon Server.
 
-### 4.7 `OrbeonLogoService`
+### 4.8 `OrbeonLogoService`
 
 Detecta logos/imágenes (`fr:image`, adjuntos en instancia) y calcula **posición global**, **posición en sección**, `controlId`, `sectionId`, `filename`, `src`.
 
@@ -168,7 +183,7 @@ Detecta logos/imágenes (`fr:image`, adjuntos en instancia) y calcula **posició
 | `analizarLogos(xml)` | `List<LogoEnFormulario>` |
 | `describirLogos(xml)` | Texto legible para el asistente NL |
 
-### 4.8 `OrbeonNaturalLanguageService`
+### 4.9 `OrbeonNaturalLanguageService`
 
 Parser de **reglas en español** (sin LLM). Traduce instrucciones a `changes[]` o consultas.
 
@@ -309,24 +324,44 @@ Variables globales JS (sin framework):
 - `xmlActual` — XML en memoria
 - `componentes` — lista plana
 - `estructura` — jerarquía secciones
+- `dependencias` — análisis de `relevant` (`OrbeonDependencyService`)
 - `changelog` — cambios pendientes de la sesión
+- `editorCrudActivo` — elemento en edición en el panel CRUD contextual
+- `previewBorradorActivo` / `snapshotAntesPreview` — estado de previsualización sin guardar
 
 ### Pestañas panel izquierdo
 
 | Pestaña | Función |
 |---------|---------|
-| Lista | Edición guiada label/hint |
-| **Asistente** | Instrucciones en lenguaje natural |
-| Secciones | Árbol por sección |
+| Lista | Edición guiada label/hint; clic en tarjeta → editor CRUD |
+| **Asistente** | Instrucciones en lenguaje natural; tarjetas de resultado clicables |
+| Secciones | Árbol por sección; clic en cabecera/campo/imagen → editor CRUD |
+| **Dependencias** | Visibilidad condicional; clic en tarjeta → editor CRUD |
 | Modificar JSON | Editor `changes[]` |
 | Cambios | Changelog acumulado |
-| Código XML | Textarea + sincronizar |
+| Código XML | Textarea + sincronizar; destino al localizar desde CRUD |
+
+### Panel CRUD contextual (`#panelEditorCrud`)
+
+Barra inferior del panel izquierdo. Funciones principales en `index.html`:
+
+| Función | Descripción |
+|---------|-------------|
+| `abrirEditorCrud(tipo, meta)` | Muestra panel, renderiza formulario, llama `irACodigoXml` |
+| `irACodigoXml(terminos)` | Selección en `#textareaXml` |
+| `previsualizarEditorCrud()` | `POST /modificar` + `/sincronizar-codigo` sin actualizar `xmlActual` |
+| `aplicarEditorCrud()` | Persiste cambios vía `/modificar` y `procesarRespuesta` |
+| `descartarPreviewBorrador()` | Restaura snapshot de componentes/estructura/dependencias |
+
+Tipos soportados: `logo`, `campo`, `desplegable`, `seccion`, `dependencia`.
+
+Guía de usuario: [08-editor-crud-contextual-y-preview.md](08-editor-crud-contextual-y-preview.md).
 
 ### Panel derecho
 
 | Vista | Función |
 |-------|---------|
-| Vista Diseño | Render HTML por tipo de control |
+| Vista Diseño | Render HTML por tipo de control; banner ámbar si hay preview borrador |
 | Vista PDF | iframe con blob PDF |
 
 ---

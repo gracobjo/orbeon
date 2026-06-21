@@ -66,6 +66,21 @@
 
 ---
 
+## 3c. Editor CRUD contextual y previsualización
+
+| ID | Requisito | Prioridad | Estado |
+|----|-----------|-----------|--------|
+| RF-060 | Al pulsar un resultado (logo, campo, sección, dependencia) la UI debe abrir el panel CRUD contextual y localizar el fragmento en Código XML. | Alta | Implementado |
+| RF-061 | El panel CRUD debe permitir editar logos (`update-image`), labels/hints/alerts de campos y expresiones `relevant` de secciones. | Alta | Implementado |
+| RF-062 | Debe existir acción **Previsualizar** que aplique cambios en Vista Diseño sin persistir `xmlActual`. | Alta | Implementado |
+| RF-063 | Debe existir acción **Aplicar al XML** que confirme los cambios y actualice XML, componentes, estructura y changelog. | Alta | Implementado |
+| RF-064 | Debe existir acción **Descartar vista previa** que restaure el estado anterior al preview. | Media | Implementado |
+| RF-065 | Los resultados del Asistente (tarjetas de logos y desplegables) deben ser clicables y abrir el editor contextual. | Media | Implementado |
+
+Guía de usuario: [08-editor-crud-contextual-y-preview.md](08-editor-crud-contextual-y-preview.md).
+
+---
+
 ## 4. Comparación de versiones
 
 | ID | Requisito | Prioridad | Estado |

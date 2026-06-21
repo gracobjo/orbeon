@@ -92,11 +92,14 @@ mvn test
 ```
 1. Arrancar servidor  →  http://localhost:8080
 2. Cargar XML base    →  botón «Cargar XML base»
-3. Editar             →  Lista / Asistente / Modificar JSON
-4. Previsualizar      →  Vista Diseño (panel derecho)
-5. Exportar           →  «Exportar XML de Salida»
-6. Importar en Orbeon →  Form Builder / despliegue
+3. Localizar elemento →  Lista / Secciones / Dependencias / Asistente (clic en resultado)
+4. Editar             →  Panel CRUD contextual + Código XML localizado
+5. Previsualizar      →  Vista Diseño (borrador sin guardar) → Aplicar al XML
+6. Exportar           →  «Exportar XML de Salida»
+7. Importar en Orbeon →  Form Builder / despliegue
 ```
+
+> **Nuevo:** al pulsar un logo, campo, sección o dependencia en la UI se abre el **editor CRUD contextual** con el XML resaltado y opción de **previsualizar antes de guardar**. Guía completa: **[08 — Editor CRUD contextual y preview](08-editor-crud-contextual-y-preview.md)**.
 
 Archivos de prueba en la raíz del proyecto:
 
@@ -389,6 +392,8 @@ Añadir opción PEATONAL con valor PE al desplegable tipo de vía
 - API: `POST /api/formulario/analizar-logos` con `{ "xml": "..." }`
 - Pestaña Secciones → bloque «Imágenes en instancia»
 
+Tras una consulta de logos en el Asistente, **pulsa la tarjeta del resultado** (`iapa-img → editar`) para abrir el editor CRUD y localizar el nodo en el XML. Ver [08 — Editor CRUD contextual](08-editor-crud-contextual-y-preview.md).
+
 ### Update — sustituir logo
 
 **JSON:**
@@ -430,6 +435,7 @@ Modifica el nodo en **`fr-form-instance`**, no en resources.
 | `update-text` | Cambiar texto HTML explicativo | `elementId`, `value` |
 | `hide-section` / `show-section` | Ocultar/mostrar sección | `sectionId` |
 | `update-bind` | Atributos XForms del bind | `bindId`, `attributes{}` |
+| `update-section-relevant` | Visibilidad condicional de sección/grid | `sectionId` o `bindId`, `relevant` o `removeRelevant` |
 | `remove-field` | Quitar control del view | `fieldId` (id del control) |
 | `add-field` | Añadir nodo en instancia | `sectionId`, `fieldName` |
 
@@ -441,18 +447,80 @@ GET http://localhost:8080/api/formulario/esquema-modificaciones
 
 ---
 
-## Parte 8 — Tabla resumen: tres formas de editar
+## Parte 8 — CRUD de dependencias entre secciones
+
+Las secciones que se activan o desactivan al marcar checkboxes u otras condiciones se controlan con **`xf:bind @relevant`**.
+
+### Desde la interfaz (recomendado)
+
+1. Cargar el XML.
+2. Pestaña **Dependencias**.
+3. Buscar la sección (p. ej. `vinculadas-section`).
+4. **Clic en la tarjeta** o **Editar aquí** → se abre el panel CRUD contextual y el XML localizado.
+5. Modificar la expresión XPath (o usar atajos en la tarjeta inline: Siempre visible / Oculta fija / Visible fija).
+6. **Previsualizar** → comprobar en Vista Diseño → **Aplicar al XML**.
+7. Exportar cuando termine.
+
+Alternativa inline en la misma tarjeta: **Editar** → textarea → **Guardar en XML** (aplica de inmediato, sin paso de preview).
+
+Documentación completa: **[07 — Dependencias de secciones](07-dependencias-secciones.md)** y **[08 — Editor CRUD contextual](08-editor-crud-contextual-y-preview.md)**.
+
+### Desde JSON (API / Modificar JSON)
+
+Ocultar sección de empresas vinculadas salvo checkbox marcado (ejemplo ya existente en plantilla):
+
+```json
+{
+  "changes": [
+    {
+      "type": "update-section-relevant",
+      "sectionId": "vinculadas-section",
+      "relevant": "(xxf:non-blank($documentoIdent-nifSol) and xxf:valid($documentoIdent-nifSol)) and $otrosDatosEmpresa-vinculadas/string() ='true'"
+    }
+  ]
+}
+```
+
+Forzar sección siempre visible:
+
+```json
+{
+  "changes": [
+    {
+      "type": "update-section-relevant",
+      "bindId": "modoNotificacion-bind",
+      "removeRelevant": true
+    }
+  ]
+}
+```
+
+Análisis sin modificar:
+
+```bash
+curl -X POST http://localhost:8080/api/formulario/analizar-dependencias \
+  -H "Content-Type: application/json" \
+  -d "{\"xml\": \"$(cat 684_F1b_MIXTO_480_Solicitud_v39.txt | sed 's/\"/\\\\\"/g')\"}"
+```
+
+*(En PowerShell use un cliente REST o la pestaña Dependencias de la UI.)*
+
+---
+
+## Parte 9 — Tabla resumen: formas de editar
 
 | Forma | Mejor para | Persiste en XML al instante |
 |-------|------------|----------------------------|
-| **Lista** + Exportar | Edición visual de labels/hints/alerts | Al exportar |
+| **Editor CRUD contextual** (clic en resultado) | Logos, campos, secciones, dependencias; preview antes de guardar | Al **Aplicar al XML** |
+| **Lista** + Exportar | Edición visual masiva de labels/hints/alerts | Al exportar |
+| **Dependencias** (inline) | Reglas de visibilidad sin preview | Al guardar |
 | **Modificar JSON** | Lotes, CI/CD, cambios complejos | Al aplicar |
 | **Asistente** | Consultas y órdenes en español | Al ejecutar (si «Aplicar» activo) |
 | **Código XML** manual | Expertos Orbeon | Tras **Sincronizar** |
 
 ---
 
-## Parte 9 — Ejemplo completo paso a paso
+## Parte 10 — Ejemplo completo paso a paso
 
 **Objetivo:** cambiar el label de «Tipo de vía» y añadir una opción al desplegable.
 
@@ -488,6 +556,8 @@ GET http://localhost:8080/api/formulario/esquema-modificaciones
 
 ## Referencias
 
+- [08 — Editor CRUD contextual y preview](08-editor-crud-contextual-y-preview.md) — clic en resultados, previsualizar antes de guardar
+- [07 — Dependencias de secciones](07-dependencias-secciones.md)
 - [04 — Documentación de desarrollador](04-documentacion-desarrollador.md) — API y servicios
 - [05 — APIs externas](05-apis-externas.md) — dependencias de red
-- [03 — Casos de uso](03-casos-de-uso.md) — CU-03, CU-04, CU-11
+- [03 — Casos de uso](03-casos-de-uso.md) — CU-03, CU-04, CU-11, CU-13

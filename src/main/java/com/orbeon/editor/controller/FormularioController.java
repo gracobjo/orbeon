@@ -13,7 +13,9 @@ import com.orbeon.editor.dto.SincronizarCodigoRequest;
 import com.orbeon.editor.dto.VistaPdfRequest;
 import com.orbeon.editor.model.ComponenteFormulario;
 import com.orbeon.editor.model.LogoEnFormulario;
+import com.orbeon.editor.model.AnalisisDependencias;
 import com.orbeon.editor.service.OrbeonCompareService;
+import com.orbeon.editor.service.OrbeonDependencyService;
 import com.orbeon.editor.service.OrbeonFormService;
 import com.orbeon.editor.service.OrbeonLogoService;
 import com.orbeon.editor.service.OrbeonModificationService;
@@ -49,6 +51,7 @@ public class FormularioController {
     private final OrbeonCompareService orbeonCompareService;
     private final OrbeonNaturalLanguageService naturalLanguageService;
     private final OrbeonLogoService logoService;
+    private final OrbeonDependencyService dependencyService;
     private final ObjectMapper objectMapper;
 
     public FormularioController(OrbeonFormService orbeonFormService,
@@ -58,6 +61,7 @@ public class FormularioController {
                                 OrbeonCompareService orbeonCompareService,
                                 OrbeonNaturalLanguageService naturalLanguageService,
                                 OrbeonLogoService logoService,
+                                OrbeonDependencyService dependencyService,
                                 ObjectMapper objectMapper) {
         this.orbeonFormService = orbeonFormService;
         this.orbeonStructureService = orbeonStructureService;
@@ -66,6 +70,7 @@ public class FormularioController {
         this.orbeonCompareService = orbeonCompareService;
         this.naturalLanguageService = naturalLanguageService;
         this.logoService = logoService;
+        this.dependencyService = dependencyService;
         this.objectMapper = objectMapper;
     }
 
@@ -74,6 +79,7 @@ public class FormularioController {
         resp.setXml(xml);
         resp.setComponentes(orbeonFormService.parsearEstructuraDesdeString(xml));
         resp.setEstructura(orbeonStructureService.parsearEstructuraCompleta(xml));
+        resp.setDependencias(dependencyService.analizar(xml));
         return resp;
     }
 
@@ -218,6 +224,14 @@ public class FormularioController {
         } catch (Exception e) {
             throw new IllegalArgumentException("Error al procesar instrucción: " + e.getMessage(), e);
         }
+    }
+
+    @PostMapping(value = "/analizar-dependencias", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public AnalisisDependencias analizarDependencias(@RequestBody SincronizarCodigoRequest request) {
+        if (request.getXml() == null || request.getXml().isBlank()) {
+            throw new IllegalArgumentException("El campo 'xml' es obligatorio");
+        }
+        return dependencyService.analizar(request.getXml());
     }
 
     @PostMapping(value = "/analizar-logos", consumes = MediaType.APPLICATION_JSON_VALUE)
