@@ -1,0 +1,35 @@
+@startuml secuencia-modificar-exportar
+title Secuencia — CU-04 / CU-05 Modificar y exportar
+
+actor Usuario
+participant "index.html" as UI
+participant "FormularioController" as CTRL
+participant "OrbeonModificationService" as MOD
+participant "OrbeonXmlUtil" as XML
+database "DOM XML" as DOM
+
+== Aplicar cambios JSON ==
+Usuario -> UI : Pega JSON changes[]\nPulsa Aplicar
+UI -> CTRL : POST /api/formulario/modificar\n{xml, changes}
+CTRL -> MOD : aplicarCambios(xml, changes)
+loop por cada change
+  MOD -> DOM : aplicarCambio(type, params)
+end
+MOD -> XML : serializar(doc)
+MOD --> CTRL : ModificacionResponse\n{xml, applied, changeLog}
+CTRL --> UI : XML actualizado + log
+UI -> UI : Actualiza xmlActual,\ncomponentes, changelog
+
+== Exportar ==
+Usuario -> UI : Pulsa Exportar XML
+UI -> CTRL : POST /api/formulario/exportar\nxmlActual + modificaciones.json
+alt changes[] en JSON
+  CTRL -> MOD : aplicarCambios
+  MOD --> CTRL : xml final
+else lista ComponenteFormulario
+  CTRL -> CTRL : aplicarModificacionesDesdeString
+end
+CTRL --> UI : application/xml (bytes)
+UI --> Usuario : Descarga orbeon_formulario_modificado.xml
+
+@enduml

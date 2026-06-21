@@ -1,0 +1,37 @@
+@startuml despliegue
+title Diagrama de despliegue
+
+node "Estación de trabajo" {
+  artifact "Navegador web" as BROWSER
+}
+
+node "Servidor local / intranet" {
+  node "JVM Java 17+" {
+    artifact "orbeon-form-editor.jar\nSpring Boot 3.2.5" as JAR
+    component "Tomcat embebido\n:8080" as TOMCAT
+  }
+}
+
+cloud "Internet" {
+  artifact "cdn.tailwindcss.com" as CDN
+}
+
+folder "Sistema de archivos" {
+  file "plantilla_PRE.txt" as PRE
+  file "plantilla_v39.txt" as V39
+  file "modificaciones.json" as JSON
+}
+
+BROWSER --> TOMCAT : HTTP\nlocalhost:8080
+BROWSER ..> CDN : GET Tailwind
+BROWSER ..> PRE : File API upload
+BROWSER ..> V39 : File API upload
+BROWSER ..> JSON : File API upload
+TOMCAT --> JAR
+
+note bottom of JAR
+  Sin base de datos
+  Stateless REST
+end note
+
+@enduml

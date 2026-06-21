@@ -1,0 +1,28 @@
+@startuml secuencia-cargar-xml
+title Secuencia — CU-01 Cargar plantilla XML
+
+actor Usuario
+participant "index.html" as UI
+participant "FormularioController" as CTRL
+participant "OrbeonFormService" as FORM
+participant "OrbeonStructureService" as STRUCT
+participant "OrbeonResourceParser" as RES
+database "DOM XML" as DOM
+
+Usuario -> UI : Selecciona archivo XML
+UI -> CTRL : POST /api/formulario/cargar\n(multipart archivo)
+CTRL -> DOM : parsear bytes UTF-8
+CTRL -> FORM : parsearEstructuraDesdeString(xml)
+FORM -> RES : extraerRecursos(doc, xpath)
+RES --> FORM : Map<clave, RecursoFormulario>
+FORM -> DOM : XPath fr:view controles
+FORM -> RES : configurarItemsSelect (selects)
+FORM --> CTRL : List<ComponenteFormulario>
+CTRL -> STRUCT : parsearEstructuraCompleta(xml)
+STRUCT -> RES : extraerRecursos + items
+STRUCT --> CTRL : EstructuraFormulario
+CTRL --> UI : FormularioResponse\n{xml, componentes, estructura}
+UI -> UI : renderLista()\nrenderSecciones()\nrenderVistaDiseño()
+UI --> Usuario : Formulario visible
+
+@enduml

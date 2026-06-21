@@ -1,0 +1,94 @@
+@startuml clases-dominio
+skinparam classAttributeIconSize 0
+title Diagrama de clases — Modelo de dominio
+
+package "com.orbeon.editor.model" {
+  class ComponenteFormulario {
+    - id: String
+    - tipo: String
+    - label: String
+    - hint: String
+    - alert: String
+    - appearance: String
+    - items: List<ItemSelect>
+    - metadatos: Map<String,String>
+  }
+
+  class ItemSelect {
+    - label: String
+    - value: String
+  }
+
+  class RecursoFormulario {
+    - label: String
+    - hint: String
+    - alert: String
+    - items: List<ItemSelect>
+  }
+
+  class SeccionFormulario {
+    - id: String
+    - titulo: String
+    - campos: List<ComponenteFormulario>
+    - numGrids: int
+  }
+
+  class EstructuraFormulario {
+    - secciones: List<SeccionFormulario>
+    - totalComponentes: int
+  }
+
+  class DiferenciaComponente {
+    - tipoCambio: String
+    - componenteBase: ComponenteFormulario
+    - componenteNuevo: ComponenteFormulario
+    - cambios: List<CambioCampo>
+  }
+
+  class CambioCampo {
+    - campo: String
+    - valorAnterior: String
+    - valorNuevo: String
+  }
+
+  ComponenteFormulario "1" *-- "0..*" ItemSelect
+  RecursoFormulario "1" *-- "0..*" ItemSelect
+  SeccionFormulario "1" *-- "0..*" ComponenteFormulario
+  EstructuraFormulario "1" *-- "1..*" SeccionFormulario
+  DiferenciaComponente "1" o-- "0..1" ComponenteFormulario : base
+  DiferenciaComponente "1" o-- "0..1" ComponenteFormulario : nuevo
+  DiferenciaComponente "1" *-- "0..*" CambioCampo
+}
+
+package "com.orbeon.editor.dto" {
+  class FormularioResponse {
+    - xml: String
+    - componentes: List<ComponenteFormulario>
+    - estructura: EstructuraFormulario
+  }
+
+  class ModificacionRequest {
+    - xml: String
+    - changes: List<Map>
+  }
+
+  class ModificacionResponse {
+    - xml: String
+    - applied: List<String>
+    - changeLog: List<String>
+  }
+
+  class ComparacionResponse {
+    - nombreBase: String
+    - nombreNuevo: String
+    - resumen: Map
+    - diferencias: List<DiferenciaComponente>
+  }
+
+  FormularioResponse --> ComponenteFormulario
+  FormularioResponse --> EstructuraFormulario
+  ModificacionRequest --> ModificacionResponse
+  ComparacionResponse --> DiferenciaComponente
+}
+
+@enduml

@@ -1,0 +1,53 @@
+@startuml casos-uso
+left to right direction
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+
+title Diagrama de casos de uso — Orbeon Form Editor
+
+actor "Analista funcional" as AF
+actor "Desarrollador Orbeon" as DEV
+actor "Integrador / DevOps" as INT
+
+rectangle "Orbeon Form Editor" {
+  usecase "CU-01\nCargar plantilla XML" as UC01
+  usecase "CU-02\nExplorar componentes" as UC02
+  usecase "CU-03\nEditar labels/hints" as UC03
+  usecase "CU-04\nAplicar cambios JSON" as UC04
+  usecase "CU-05\nExportar XML" as UC05
+  usecase "CU-06\nVista diseño" as UC06
+  usecase "CU-07\nVista PDF" as UC07
+  usecase "CU-08\nComparar versiones" as UC08
+  usecase "CU-09\nSincronizar código XML" as UC09
+  usecase "CU-10\nConsultar esquema API" as UC10
+  usecase "CU-11\nAsistente lenguaje natural" as UC11
+  usecase "CU-12\nAnalizar logos" as UC12
+}
+
+AF --> UC01
+AF --> UC11
+DEV --> UC11
+DEV --> UC12
+INT --> UC11
+AF --> UC02
+AF --> UC06
+AF --> UC08
+
+DEV --> UC01
+DEV --> UC03
+DEV --> UC04
+DEV --> UC05
+DEV --> UC07
+DEV --> UC09
+
+INT --> UC04
+INT --> UC05
+INT --> UC08
+INT --> UC10
+
+UC01 ..> UC02 : <<include>>
+UC01 ..> UC06 : <<include>>
+UC03 ..> UC05 : <<extend>>
+UC04 ..> UC05 : <<extend>>
+
+@enduml

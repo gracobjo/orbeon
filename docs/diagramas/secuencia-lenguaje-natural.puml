@@ -1,0 +1,30 @@
+@startuml secuencia-lenguaje-natural
+title Secuencia — CU-11 Asistente lenguaje natural
+
+actor Usuario
+participant "index.html" as UI
+participant "FormularioController" as CTRL
+participant "OrbeonNaturalLanguageService" as NL
+participant "OrbeonLogoService" as LOGO
+participant "OrbeonModificationService" as MOD
+participant "OrbeonFormService" as FORM
+
+Usuario -> UI : Escribe instrucción en español
+UI -> CTRL : POST /api/formulario/lenguaje-natural\n{xml, instruccion, aplicarCambios}
+
+alt consulta logos
+  NL -> LOGO : analizarLogos(xml) / describirLogos(xml)
+  LOGO --> NL : List<LogoEnFormulario>
+  NL --> CTRL : NaturalLanguageResponse (ejecutado=false)
+else modificación (ej. añadir opción desplegable)
+  NL -> NL : parsear intención → changes[]
+  NL -> MOD : aplicarCambios(xml, changes)
+  MOD --> NL : xml modificado + log
+  NL -> FORM : parsearEstructuraDesdeString(xml)
+  NL --> CTRL : NaturalLanguageResponse (ejecutado=true)
+end
+
+CTRL --> UI : JSON respuesta
+UI --> Usuario : Historial asistente + UI actualizada
+
+@enduml

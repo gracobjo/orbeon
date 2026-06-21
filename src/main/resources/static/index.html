@@ -1,0 +1,1295 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orbeon Form Runner — Editor XML</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        orbeon: { 50: '#eef6ff', 100: '#d9eaff', 500: '#2563eb', 600: '#1d4ed8', 700: '#1e40af' }
+                    }
+                }
+            }
+        };
+    </script>
+    <style>
+        .tab-active { border-bottom: 2px solid #2563eb; color: #2563eb; font-weight: 600; }
+        .code-area { font-family: 'Consolas', 'Monaco', 'Courier New', monospace; tab-size: 2; }
+        .preview-input { pointer-events: none; }
+        #visorPdf { background: #525659; }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen flex flex-col">
+
+<!-- Barra de herramientas superior -->
+<header class="bg-white border-b border-slate-200 shadow-sm px-6 py-3 flex flex-wrap items-center gap-3">
+    <div class="flex items-center gap-2 mr-4">
+        <div class="w-8 h-8 rounded-lg bg-orbeon-500 flex items-center justify-center text-white font-bold text-sm">O</div>
+        <h1 class="text-lg font-semibold text-slate-800">Editor Orbeon Form Runner</h1>
+    </div>
+
+    <label class="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-orbeon-500 hover:bg-orbeon-600 text-white rounded-lg text-sm font-medium transition">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+        Cargar XML base
+        <input type="file" id="inputXml" accept=".xml,.txt" class="hidden">
+    </label>
+
+    <label class="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-sm font-medium transition">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        JSON modificaciones (opcional)
+        <input type="file" id="inputJsonMod" accept=".json" class="hidden">
+    </label>
+
+    <button id="btnExportar" disabled
+            class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium transition">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        Exportar XML de Salida
+    </button>
+
+    <label id="labelComparar" class="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg text-sm font-medium transition opacity-40 pointer-events-none">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+        Comparar con otro XML
+        <input type="file" id="inputXmlComparar" accept=".xml,.txt" class="hidden">
+    </label>
+
+    <button id="btnCompararDos" class="inline-flex items-center gap-2 px-4 py-2 bg-violet-100 hover:bg-violet-200 text-violet-800 rounded-lg text-sm font-medium transition">
+        Comparar 2 archivos…
+    </button>
+
+    <span id="estado" class="ml-auto text-sm text-slate-500">Sin archivo cargado</span>
+</header>
+
+<!-- Contenedor principal: dos paneles simétricos -->
+<main class="flex-1 flex overflow-hidden p-4 gap-4">
+
+    <!-- Panel izquierdo: edición -->
+    <section class="w-1/2 flex flex-col bg-white rounded-xl shadow border border-slate-200 overflow-hidden">
+        <nav class="flex border-b border-slate-200 overflow-x-auto">
+            <button id="tabGuiado" class="flex-shrink-0 px-3 py-3 text-xs text-center tab-active transition">Lista</button>
+            <button id="tabAsistente" class="flex-shrink-0 px-3 py-3 text-xs text-center text-slate-500 hover:text-slate-700 transition">Asistente</button>
+            <button id="tabSecciones" class="flex-shrink-0 px-3 py-3 text-xs text-center text-slate-500 hover:text-slate-700 transition">Secciones</button>
+            <button id="tabModificar" class="flex-shrink-0 px-3 py-3 text-xs text-center text-slate-500 hover:text-slate-700 transition">Modificar JSON</button>
+            <button id="tabChangelog" class="flex-shrink-0 px-3 py-3 text-xs text-center text-slate-500 hover:text-slate-700 transition">Cambios <span id="cntChangelog" class="ml-1 bg-slate-200 px-1 rounded text-[10px]">0</span></button>
+            <button id="tabCodigo" class="flex-shrink-0 px-3 py-3 text-xs text-center text-slate-500 hover:text-slate-700 transition">Código XML</button>
+        </nav>
+
+        <!-- Pestaña Lista plana -->
+        <div id="panelGuiado" class="flex-1 flex flex-col overflow-hidden">
+            <div class="p-3 border-b border-slate-100">
+                <input id="buscarLista" type="search" placeholder="Buscar campo por id, label o tipo…"
+                       class="w-full text-sm border border-slate-300 rounded-md px-3 py-1.5 focus:ring-2 focus:ring-orbeon-500 outline-none">
+            </div>
+            <div class="flex-1 overflow-y-auto p-4 space-y-3">
+                <p id="msgVacio" class="text-slate-400 text-sm text-center py-12">
+                    Carga un archivo XML de Orbeon Form Runner para comenzar a editar.
+                </p>
+                <div id="listaComponentes" class="space-y-3 hidden"></div>
+            </div>
+        </div>
+
+        <!-- Pestaña Asistente lenguaje natural -->
+        <div id="panelAsistente" class="flex-1 flex flex-col hidden overflow-hidden">
+            <div class="p-3 border-b border-slate-100 bg-gradient-to-r from-violet-50 to-orbeon-50">
+                <p class="text-xs text-slate-600 mb-2">Instrucciones en español o gestión visual de desplegables:</p>
+                <div class="flex flex-wrap gap-1.5">
+                    <button type="button" class="sugerencia-ia text-[10px] px-2 py-1 bg-white border border-slate-200 rounded-full hover:border-orbeon-500">¿Cuántos logos tiene?</button>
+                    <button type="button" class="sugerencia-ia text-[10px] px-2 py-1 bg-white border border-slate-200 rounded-full hover:border-orbeon-500">¿Dónde está el logo?</button>
+                    <button type="button" class="sugerencia-ia text-[10px] px-2 py-1 bg-white border border-slate-200 rounded-full hover:border-orbeon-500">Listar desplegables</button>
+                </div>
+            </div>
+
+            <!-- Panel CRUD desplegables -->
+            <div id="panelDesplegablesCrud" class="border-b border-slate-200 bg-white flex flex-col max-h-[45%] min-h-0">
+                <div class="px-3 py-2 border-b border-slate-100 flex items-center gap-2 flex-wrap">
+                    <h3 class="text-xs font-semibold text-slate-700 shrink-0">
+                        Desplegables <span id="cntDesplegables" class="text-orbeon-600">0</span>
+                    </h3>
+                    <input id="buscarDesplegable" type="search" placeholder="Filtrar por label o id…"
+                           class="flex-1 min-w-[120px] text-xs border border-slate-300 rounded-md px-2 py-1 focus:ring-1 focus:ring-orbeon-500 outline-none">
+                </div>
+                <div id="desplegableFeedback" class="hidden mx-3 mt-2 px-3 py-2 rounded-md text-xs border"></div>
+                <div id="listaDesplegables" class="flex-1 overflow-y-auto p-2 space-y-2">
+                    <p class="text-slate-400 text-xs text-center py-6">Carga un XML para ver los desplegables</p>
+                </div>
+            </div>
+
+            <div class="p-3 border-b border-slate-100 shrink-0">
+                <textarea id="inputAsistente" rows="2" placeholder="Ej: Sustituir el logo iapa-img por /ruta/nueva.bin"
+                          class="w-full text-sm border border-slate-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-orbeon-500 outline-none resize-none"></textarea>
+                <div class="flex items-center gap-3 mt-2">
+                    <label class="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer">
+                        <input type="checkbox" id="chkAplicarIa" checked class="rounded border-slate-300 text-orbeon-500">
+                        Aplicar cambios al XML
+                    </label>
+                    <button id="btnEnviarAsistente" class="ml-auto px-4 py-1.5 bg-violet-600 hover:bg-violet-700 text-white text-xs font-medium rounded-md transition">
+                        Ejecutar
+                    </button>
+                </div>
+            </div>
+            <div id="asistenteHistorial" class="flex-1 overflow-y-auto p-3 space-y-2 bg-slate-50 min-h-0">
+                <p class="text-slate-400 text-xs text-center py-4">Historial de instrucciones en lenguaje natural</p>
+            </div>
+        </div>
+
+        <!-- Pestaña Secciones -->
+        <div id="panelSecciones" class="flex-1 flex flex-col hidden overflow-hidden">
+            <div class="p-3 border-b border-slate-100">
+                <input id="buscarSecciones" type="search" placeholder="Buscar sección o campo…"
+                       class="w-full text-sm border border-slate-300 rounded-md px-3 py-1.5 focus:ring-2 focus:ring-orbeon-500 outline-none">
+            </div>
+            <div id="listaSecciones" class="flex-1 overflow-y-auto p-4 space-y-3">
+                <p class="text-slate-400 text-sm text-center py-12">Sin secciones cargadas</p>
+            </div>
+        </div>
+
+        <!-- Pestaña Modificar JSON tipado -->
+        <div id="panelModificar" class="flex-1 flex flex-col hidden overflow-hidden">
+            <div class="p-3 border-b border-slate-100 flex gap-2">
+                <button id="btnPlantillaJson" class="text-xs px-3 py-1.5 bg-slate-200 hover:bg-slate-300 rounded-md">Plantilla</button>
+                <button id="btnAplicarJson" class="text-xs px-3 py-1.5 bg-orbeon-500 hover:bg-orbeon-600 text-white rounded-md">Aplicar cambios</button>
+            </div>
+            <textarea id="jsonEditor" spellcheck="false" class="code-area flex-1 w-full p-4 bg-slate-900 text-amber-200 text-xs leading-relaxed resize-none focus:outline-none"
+                      placeholder='{"changes": [{"type": "update-label", "fieldId": "...", "label": "..."}]}'></textarea>
+            <div id="modResult" class="p-3 text-xs border-t border-slate-200 max-h-32 overflow-y-auto bg-slate-50"></div>
+        </div>
+
+        <!-- Pestaña Changelog -->
+        <div id="panelChangelog" class="flex-1 overflow-y-auto p-4 hidden">
+            <div id="listaChangelog" class="space-y-2 text-sm text-slate-600">
+                <p class="text-slate-400 text-center py-8">No hay cambios aplicados aún</p>
+            </div>
+        </div>
+
+        <!-- Pestaña Vista Código XML -->
+        <div id="panelCodigo" class="flex-1 flex flex-col hidden">
+            <textarea id="textareaXml" spellcheck="false" placeholder="El código XML aparecerá aquí..."
+                      class="code-area flex-1 w-full p-4 bg-slate-900 text-emerald-300 text-xs leading-relaxed resize-none focus:outline-none"></textarea>
+            <div class="p-3 border-t border-slate-200 bg-slate-50">
+                <button id="btnSincronizar"
+                        class="w-full py-2.5 bg-orbeon-500 hover:bg-orbeon-600 text-white rounded-lg text-sm font-medium transition">
+                    Actualizar Vista de Diseño desde el Código
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Panel derecho: vista de diseño y PDF -->
+    <section class="w-1/2 flex flex-col bg-white rounded-xl shadow border border-slate-200 overflow-hidden">
+        <nav class="flex border-b border-slate-200 bg-slate-50">
+            <button id="tabPreview" class="flex-1 py-2.5 text-sm text-center tab-active transition">Vista Diseño</button>
+            <button id="tabPdf" class="flex-1 py-2.5 text-sm text-center text-slate-500 hover:text-slate-700 transition">Vista PDF</button>
+        </nav>
+
+        <!-- Mock WYSIWYG -->
+        <div id="panelPreview" class="flex-1 flex flex-col overflow-hidden">
+            <div class="px-4 py-2 border-b border-slate-100">
+                <p class="text-xs text-slate-400">Simulación HTML del formulario según los componentes activos</p>
+            </div>
+            <div id="previewFormulario" class="flex-1 overflow-y-auto p-6 bg-gradient-to-b from-white to-slate-50">
+                <div id="previewVacio" class="text-center py-16 text-slate-300">
+                    <svg class="w-16 h-16 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    <p class="text-sm">La previsualización aparecerá al cargar un formulario</p>
+                </div>
+                <div id="previewContenido" class="hidden max-w-2xl mx-auto space-y-4"></div>
+            </div>
+        </div>
+
+        <!-- Visor PDF embebido -->
+        <div id="panelPdf" class="flex-1 flex flex-col hidden overflow-hidden">
+            <div class="px-4 py-2 border-b border-slate-100 flex items-center justify-between gap-2">
+                <p class="text-xs text-slate-400">PDF generado desde el XML (reglas Orbeon: excluye <code class="text-slate-500">noprintinpdf</code>)</p>
+                <div class="flex gap-2">
+                    <button id="btnRefrescarPdf" disabled
+                            class="px-3 py-1 text-xs bg-orbeon-500 hover:bg-orbeon-600 disabled:opacity-40 text-white rounded-md transition">
+                        Actualizar PDF
+                    </button>
+                    <button id="btnDescargarPdf" disabled
+                            class="px-3 py-1 text-xs bg-slate-200 hover:bg-slate-300 disabled:opacity-40 text-slate-700 rounded-md transition">
+                        Descargar
+                    </button>
+                </div>
+            </div>
+            <div id="pdfVacio" class="flex-1 flex items-center justify-center text-slate-400 text-sm">
+                Carga un XML para generar la vista PDF
+            </div>
+            <div id="pdfCargando" class="hidden flex-1 flex items-center justify-center text-slate-500 text-sm">
+                <svg class="animate-spin h-5 w-5 mr-2 text-orbeon-500" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                </svg>
+                Generando PDF...
+            </div>
+            <iframe id="visorPdf" class="hidden flex-1 w-full border-0" title="Vista previa PDF"></iframe>
+        </div>
+    </section>
+</main>
+
+<!-- Toast de notificaciones -->
+<div id="toast" class="fixed bottom-6 right-6 hidden px-5 py-3 rounded-lg shadow-lg text-sm text-white transition-all z-50"></div>
+
+<!-- Modal comparación -->
+<div id="modalComparar" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/40" id="modalCompararFondo"></div>
+    <div class="absolute inset-4 md:inset-8 lg:inset-12 bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+            <div>
+                <h2 class="text-lg font-semibold text-slate-800">Comparación estructural de XML</h2>
+                <p id="compararSubtitulo" class="text-xs text-slate-500 mt-0.5"></p>
+            </div>
+            <button id="cerrarComparar" class="text-slate-400 hover:text-slate-600 text-2xl leading-none">&times;</button>
+        </div>
+        <div id="compararResumen" class="px-6 py-3 flex flex-wrap gap-3 border-b border-slate-100 bg-white"></div>
+        <div class="px-6 py-2 flex gap-2 border-b border-slate-100">
+            <button data-filtro="TODOS" class="filtro-diff px-3 py-1 text-xs rounded-full bg-slate-800 text-white">Todos</button>
+            <button data-filtro="ANADIDO" class="filtro-diff px-3 py-1 text-xs rounded-full bg-emerald-100 text-emerald-800">Añadidos</button>
+            <button data-filtro="ELIMINADO" class="filtro-diff px-3 py-1 text-xs rounded-full bg-red-100 text-red-800">Eliminados</button>
+            <button data-filtro="MODIFICADO" class="filtro-diff px-3 py-1 text-xs rounded-full bg-amber-100 text-amber-800">Modificados</button>
+        </div>
+        <div id="listaComparacion" class="flex-1 overflow-y-auto p-6 space-y-3 bg-slate-50"></div>
+    </div>
+</div>
+
+<!-- Modal elegir 2 archivos -->
+<div id="modalCompararDos" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/40" id="modalCompararDosFondo"></div>
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl shadow-2xl p-6 w-full max-w-md">
+        <h3 class="text-lg font-semibold mb-4">Comparar dos archivos XML</h3>
+        <label class="block mb-3">
+            <span class="text-sm text-slate-600">XML origen (base)</span>
+            <input type="file" id="inputBaseDos" accept=".xml,.txt" class="mt-1 block w-full text-sm">
+        </label>
+        <label class="block mb-5">
+            <span class="text-sm text-slate-600">XML nuevo (a comparar)</span>
+            <input type="file" id="inputNuevoDos" accept=".xml,.txt" class="mt-1 block w-full text-sm">
+        </label>
+        <div class="flex justify-end gap-2">
+            <button id="cancelarCompararDos" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">Cancelar</button>
+            <button id="ejecutarCompararDos" class="px-4 py-2 text-sm bg-violet-600 hover:bg-violet-700 text-white rounded-lg">Comparar</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API = '/api/formulario';
+    let componentes = [];
+    let estructura = null;
+    let xmlActual = '';
+    let jsonModificacionesExterno = null;
+    let changeLog = [];
+    let filtroLista = '';
+    let filtroSecciones = '';
+    let pdfBlobUrl = null;
+    let pdfDebounceTimer = null;
+    let tabPreviewActiva = true;
+    let comparacionActual = null;
+    let filtroComparacion = 'TODOS';
+    let filtroDesplegable = '';
+    let desplegableExpandidoId = null;
+
+    const $ = (sel) => document.querySelector(sel);
+
+    function mostrarToast(mensaje, tipo = 'info') {
+        const toast = $('#toast');
+        const colores = { info: 'bg-orbeon-500', ok: 'bg-emerald-600', error: 'bg-red-600' };
+        toast.textContent = mensaje;
+        toast.className = `fixed bottom-6 right-6 px-5 py-3 rounded-lg shadow-lg text-sm text-white z-50 ${colores[tipo] || colores.info}`;
+        toast.classList.remove('hidden');
+        setTimeout(() => toast.classList.add('hidden'), 3500);
+    }
+
+    function escaparHtml(texto) {
+        const d = document.createElement('div');
+        d.textContent = texto ?? '';
+        return d.innerHTML;
+    }
+
+    function actualizarEstado(texto) {
+        $('#estado').textContent = texto;
+    }
+
+    function habilitarExportacion(habilitar) {
+        $('#btnExportar').disabled = !habilitar;
+        $('#btnRefrescarPdf').disabled = !habilitar;
+        $('#btnDescargarPdf').disabled = !habilitar;
+        const label = $('#labelComparar');
+        if (habilitar) {
+            label.classList.remove('opacity-40', 'pointer-events-none');
+        } else {
+            label.classList.add('opacity-40', 'pointer-events-none');
+        }
+    }
+
+    /* --- Pestañas panel izquierdo --- */
+    const tabsIzq = { guiado: 'tabGuiado', asistente: 'tabAsistente', secciones: 'tabSecciones', modificar: 'tabModificar', changelog: 'tabChangelog', codigo: 'tabCodigo' };
+    Object.keys(tabsIzq).forEach(t => {
+        document.getElementById(tabsIzq[t]).addEventListener('click', () => cambiarTab(t));
+    });
+
+    function cambiarTab(tab) {
+        const paneles = { guiado: 'panelGuiado', asistente: 'panelAsistente', secciones: 'panelSecciones', modificar: 'panelModificar', changelog: 'panelChangelog', codigo: 'panelCodigo' };
+        Object.entries(paneles).forEach(([k, id]) => {
+            document.getElementById(id).classList.toggle('hidden', k !== tab);
+            document.getElementById(tabsIzq[k]).classList.toggle('tab-active', k === tab);
+            document.getElementById(tabsIzq[k]).classList.toggle('text-slate-500', k !== tab);
+        });
+    }
+
+    $('#buscarLista').addEventListener('input', (e) => { filtroLista = e.target.value.toLowerCase(); renderizarComponentes(); });
+    $('#buscarSecciones').addEventListener('input', (e) => { filtroSecciones = e.target.value.toLowerCase(); renderizarSecciones(); });
+
+    /* --- Pestañas panel derecho (Diseño / PDF) --- */
+    $('#tabPreview').addEventListener('click', () => cambiarTabPreview('preview'));
+    $('#tabPdf').addEventListener('click', () => cambiarTabPreview('pdf'));
+
+    function cambiarTabPreview(tab) {
+        tabPreviewActiva = tab === 'preview';
+        $('#panelPreview').classList.toggle('hidden', !tabPreviewActiva);
+        $('#panelPdf').classList.toggle('hidden', tabPreviewActiva);
+        $('#tabPreview').classList.toggle('tab-active', tabPreviewActiva);
+        $('#tabPdf').classList.toggle('tab-active', !tabPreviewActiva);
+        $('#tabPreview').classList.toggle('text-slate-500', !tabPreviewActiva);
+        $('#tabPdf').classList.toggle('text-slate-500', tabPreviewActiva);
+        if (!tabPreviewActiva && xmlActual) {
+            generarVistaPdf();
+        }
+    }
+
+    /* --- Renderizado del panel guiado --- */
+    function renderizarComponentes() {
+        const lista = $('#listaComponentes');
+        const msgVacio = $('#msgVacio');
+
+        if (!componentes.length) {
+            lista.classList.add('hidden');
+            msgVacio.classList.remove('hidden');
+            return;
+        }
+
+        msgVacio.classList.add('hidden');
+        lista.classList.remove('hidden');
+        lista.innerHTML = '';
+
+        let visibles = 0;
+        componentes.forEach((comp, idx) => {
+            const texto = `${comp.id} ${comp.label} ${comp.tipo} ${comp.hint || ''}`.toLowerCase();
+            if (filtroLista && !texto.includes(filtroLista)) return;
+            const esImagen = comp.tipo === 'image' || comp.tipo === 'static-attachment' || comp.tipo === 'image-attachment';
+            const tarjeta = document.createElement('div');
+            tarjeta.className = 'border border-slate-200 rounded-lg p-4 hover:border-orbeon-500/40 transition bg-slate-50/50';
+            tarjeta.innerHTML = `
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-xs font-mono text-orbeon-600 bg-orbeon-50 px-2 py-0.5 rounded">${escaparHtml(comp.id)}</span>
+                    <span class="text-xs uppercase tracking-wide text-slate-400 font-medium">${escaparHtml(comp.tipo)}</span>
+                </div>
+                ${esImagen ? `
+                    <label class="block text-xs text-slate-500 mb-1">Ruta imagen / ref</label>
+                    <input data-idx="${idx}" data-campo="ref" type="text" value="${escaparHtml(comp.metadatos?.ref || '')}"
+                           class="w-full border border-slate-300 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-orbeon-500 focus:border-orbeon-500 outline-none">
+                ` : `
+                    <label class="block text-xs text-slate-500 mb-1">Label</label>
+                    <input data-idx="${idx}" data-campo="label" type="text" value="${escaparHtml(comp.label || '')}"
+                           class="w-full border border-slate-300 rounded-md px-3 py-1.5 text-sm mb-2 focus:ring-2 focus:ring-orbeon-500 focus:border-orbeon-500 outline-none">
+                    <label class="block text-xs text-slate-500 mb-1">Hint (pista)</label>
+                    <input data-idx="${idx}" data-campo="hint" type="text" value="${escaparHtml(comp.hint || '')}"
+                           class="w-full border border-slate-300 rounded-md px-3 py-1.5 text-sm mb-2 focus:ring-2 focus:ring-orbeon-500 focus:border-orbeon-500 outline-none">
+                    <label class="block text-xs text-slate-500 mb-1">Alert</label>
+                    <input data-idx="${idx}" data-campo="alert" type="text" value="${escaparHtml(comp.alert || '')}"
+                           class="w-full border border-slate-300 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-orbeon-500 focus:border-orbeon-500 outline-none">
+                `}
+            `;
+            lista.appendChild(tarjeta);
+            visibles++;
+        });
+
+        if (!visibles) {
+            lista.innerHTML = '<p class="text-slate-400 text-sm text-center py-8">Ningún campo coincide con la búsqueda</p>';
+        }
+
+        lista.querySelectorAll('input[data-idx]').forEach(input => {
+            input.addEventListener('input', (e) => {
+                const idx = parseInt(e.target.dataset.idx);
+                const campo = e.target.dataset.campo;
+                if (campo === 'ref') {
+                    if (!componentes[idx].metadatos) componentes[idx].metadatos = {};
+                    componentes[idx].metadatos.ref = e.target.value;
+                } else {
+                    componentes[idx][campo] = e.target.value;
+                }
+                renderizarPreview();
+                programarActualizacionPdf();
+            });
+        });
+    }
+
+    function renderizarSecciones() {
+        const cont = $('#listaSecciones');
+        if (!estructura?.secciones?.length) {
+            cont.innerHTML = '<p class="text-slate-400 text-sm text-center py-12">Sin secciones cargadas</p>';
+            return;
+        }
+        cont.innerHTML = '';
+        estructura.secciones.forEach(sec => {
+            const camposFiltrados = sec.componentes.filter(c => {
+                if (!filtroSecciones) return true;
+                const t = `${sec.titulo} ${sec.id} ${c.id} ${c.label} ${c.tipo}`.toLowerCase();
+                return t.includes(filtroSecciones);
+            });
+            if (filtroSecciones && !camposFiltrados.length && !`${sec.titulo} ${sec.id}`.toLowerCase().includes(filtroSecciones)) return;
+
+            const bloque = document.createElement('div');
+            bloque.className = 'border border-slate-200 rounded-lg overflow-hidden';
+            const pdfBadge = sec.noPrintInPdf ? '<span class="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded ml-2">noprintinpdf</span>' : '';
+            bloque.innerHTML = `
+                <div class="bg-slate-50 px-4 py-2 border-b border-slate-200 cursor-pointer flex items-center justify-between" onclick="this.nextElementSibling.classList.toggle('hidden')">
+                    <div>
+                        <span class="font-semibold text-sm text-slate-800">${escaparHtml(sec.titulo || sec.id)}</span>${pdfBadge}
+                        <span class="text-xs text-slate-400 ml-2">${camposFiltrados.length} campos · ${sec.gridCount} grids</span>
+                    </div>
+                    <span class="text-slate-400 text-xs font-mono">${escaparHtml(sec.id)}</span>
+                </div>
+                <div class="divide-y divide-slate-100">
+                    ${camposFiltrados.map(c => `
+                        <div class="px-4 py-2 text-xs hover:bg-orbeon-50/50">
+                            <div class="flex justify-between gap-2">
+                                <span class="font-medium text-slate-700">${escaparHtml(c.label || c.id)}</span>
+                                <span class="text-slate-400 uppercase">${escaparHtml(c.tipo)}</span>
+                            </div>
+                            <div class="font-mono text-orbeon-600 mt-0.5">${escaparHtml(c.id)}</div>
+                            ${c.hint ? `<div class="text-amber-600 mt-0.5">💡 ${escaparHtml(c.hint)}</div>` : ''}
+                            ${c.alert ? `<div class="text-red-500 mt-0.5">⚠ ${escaparHtml(c.alert)}</div>` : ''}
+                            ${c.items?.length ? `<div class="text-slate-500 mt-1">${c.items.slice(0, 5).map(it => escaparHtml(it.label)).join(' · ')}${c.items.length > 5 ? ` · +${c.items.length - 5} más` : ''}</div>` : ''}
+                        </div>
+                    `).join('') || '<p class="p-3 text-slate-400 text-xs">Sin campos visibles</p>'}
+                </div>`;
+            cont.appendChild(bloque);
+        });
+
+        if (estructura.imagenes?.length) {
+            const imgBlock = document.createElement('div');
+            imgBlock.className = 'border border-slate-200 rounded-lg p-4 mt-3 bg-slate-50';
+            imgBlock.innerHTML = `<h3 class="text-sm font-semibold mb-2">Imágenes en instancia (${estructura.imagenes.length})</h3>` +
+                estructura.imagenes.map(img => `
+                    <div class="text-xs font-mono mb-2 p-2 bg-white rounded border">
+                        <strong>${escaparHtml(img.tag)}</strong> · ${escaparHtml(img.filename || 'sin filename')}<br>
+                        <span class="text-slate-500 break-all">${escaparHtml(img.src || '(vacío)')}</span>
+                    </div>`).join('');
+            cont.appendChild(imgBlock);
+        }
+    }
+
+    function renderizarChangelog() {
+        const lista = $('#listaChangelog');
+        $('#cntChangelog').textContent = changeLog.length;
+        if (!changeLog.length) {
+            lista.innerHTML = '<p class="text-slate-400 text-center py-8">No hay cambios aplicados aún</p>';
+            return;
+        }
+        lista.innerHTML = changeLog.map(entry => `
+            <div class="p-2 rounded border ${entry.startsWith('✗') ? 'border-red-200 bg-red-50' : 'border-emerald-200 bg-emerald-50'} text-xs font-mono">${escaparHtml(entry)}</div>
+        `).join('');
+    }
+
+    const PLANTILLA_JSON = {
+        changes: [
+            { type: "update-label", fieldId: "personaFisica-nombre", label: "Nombre completo" },
+            { type: "update-hint", fieldId: "personaFisica-nif", hint: "DNI o NIE" },
+            { type: "update-image", imageTag: "iapa-img", filename: "logo.png", mediatype: "image/png", src: "/fr/service/persistence/.../logo.bin" },
+            { type: "hide-section", sectionId: "datosEcono-section" }
+        ]
+    };
+
+    $('#btnPlantillaJson').addEventListener('click', () => {
+        $('#jsonEditor').value = JSON.stringify(PLANTILLA_JSON, null, 2);
+    });
+
+    $('#btnAplicarJson').addEventListener('click', async () => {
+        const xml = $('#textareaXml').value || xmlActual;
+        if (!xml.trim()) { mostrarToast('Carga un XML primero', 'error'); return; }
+        let parsed;
+        try { parsed = JSON.parse($('#jsonEditor').value); }
+        catch (e) { mostrarToast('JSON inválido', 'error'); return; }
+        const changes = parsed.changes || parsed;
+        if (!Array.isArray(changes)) { mostrarToast('Se requiere array changes', 'error'); return; }
+
+        try {
+            const res = await fetch(`${API}/modificar`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ xml, changes })
+            });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.error || res.statusText);
+            }
+            const data = await res.json();
+            xmlActual = data.xml;
+            $('#textareaXml').value = data.xml;
+            changeLog = [...changeLog, ...(data.applied || [])];
+            jsonModificacionesExterno = { changes };
+            const sync = await (await fetch(`${API}/sincronizar-codigo`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ xml: data.xml })
+            })).json();
+            procesarRespuesta(sync, false);
+            $('#modResult').innerHTML = (data.applied || []).map(a => `<div>${escaparHtml(a)}</div>`).join('');
+            renderizarChangelog();
+            mostrarToast(`${(data.changeLog || []).length} cambios procesados`, 'ok');
+        } catch (err) {
+            mostrarToast('Error: ' + err.message, 'error');
+        }
+    });
+
+    function programarActualizacionPdf() {
+        if (!xmlActual) return;
+        clearTimeout(pdfDebounceTimer);
+        pdfDebounceTimer = setTimeout(() => {
+            if (!tabPreviewActiva) {
+                generarVistaPdf();
+            }
+        }, 900);
+    }
+
+    /* --- Generación y visualización PDF --- */
+    async function generarVistaPdf() {
+        const xml = $('#textareaXml').value || xmlActual;
+        if (!xml.trim()) return;
+
+        $('#pdfVacio').classList.add('hidden');
+        $('#pdfCargando').classList.remove('hidden');
+        $('#visorPdf').classList.add('hidden');
+
+        const mods = jsonModificacionesExterno || componentes;
+
+        try {
+            const res = await fetch(`${API}/vista-pdf`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ xml, componentes: mods })
+            });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.error || res.statusText);
+            }
+            const blob = await res.blob();
+            if (pdfBlobUrl) URL.revokeObjectURL(pdfBlobUrl);
+            pdfBlobUrl = URL.createObjectURL(blob);
+
+            const iframe = $('#visorPdf');
+            iframe.src = pdfBlobUrl;
+            $('#pdfCargando').classList.add('hidden');
+            iframe.classList.remove('hidden');
+        } catch (err) {
+            $('#pdfCargando').classList.add('hidden');
+            $('#pdfVacio').classList.remove('hidden');
+            $('#pdfVacio').textContent = 'Error al generar PDF: ' + err.message;
+            mostrarToast('Error PDF: ' + err.message, 'error');
+        }
+    }
+
+    $('#btnRefrescarPdf').addEventListener('click', () => generarVistaPdf());
+
+    $('#btnDescargarPdf').addEventListener('click', async () => {
+        if (pdfBlobUrl) {
+            const a = document.createElement('a');
+            a.href = pdfBlobUrl;
+            a.download = 'orbeon_formulario_vista.pdf';
+            a.click();
+            return;
+        }
+        await generarVistaPdf();
+        if (pdfBlobUrl) {
+            const a = document.createElement('a');
+            a.href = pdfBlobUrl;
+            a.download = 'orbeon_formulario_vista.pdf';
+            a.click();
+        }
+    });
+
+    /* --- Renderizado mock WYSIWYG --- */
+    function renderizarPreview() {
+        const contenedor = $('#previewContenido');
+        const vacio = $('#previewVacio');
+
+        if (!componentes.length) {
+            contenedor.classList.add('hidden');
+            vacio.classList.remove('hidden');
+            return;
+        }
+
+        vacio.classList.add('hidden');
+        contenedor.classList.remove('hidden');
+        contenedor.innerHTML = '';
+
+        const titulo = document.createElement('div');
+        titulo.className = 'text-center mb-6 pb-4 border-b border-slate-200';
+        titulo.innerHTML = `<h3 class="text-lg font-bold text-slate-800">Vista previa del formulario</h3>
+                            <p class="text-xs text-slate-400 mt-1">${componentes.length} componentes detectados</p>`;
+        contenedor.appendChild(titulo);
+
+        componentes.forEach(comp => {
+            const bloque = document.createElement('div');
+            bloque.className = 'bg-white border border-slate-200 rounded-lg p-4 shadow-sm';
+
+            if (comp.tipo === 'image' || comp.tipo === 'static-attachment') {
+                const ruta = comp.metadatos?.ref || '(sin ruta)';
+                bloque.innerHTML = `
+                    <div class="flex flex-col items-center gap-2">
+                        <div class="w-full h-24 border-2 border-dashed border-slate-300 rounded-lg flex items-center justify-center bg-slate-100">
+                            <div class="text-center">
+                                <svg class="w-8 h-8 mx-auto text-slate-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                          d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                </svg>
+                                <span class="text-xs text-slate-500 font-medium">LOGO / IMAGEN</span>
+                            </div>
+                        </div>
+                        <p class="text-xs text-slate-400 font-mono truncate max-w-full">${escaparHtml(ruta)}</p>
+                        ${comp.label ? `<p class="text-sm text-slate-600">${escaparHtml(comp.label)}</p>` : ''}
+                    </div>`;
+            } else if (comp.tipo === 'explanation') {
+                bloque.innerHTML = `
+                    <div class="bg-blue-50 border-l-4 border-orbeon-500 p-3 rounded-r">
+                        <p class="text-sm text-slate-700">${escaparHtml(comp.label || 'Texto explicativo')}</p>
+                    </div>`;
+            } else if (comp.tipo === 'checkbox-input') {
+                bloque.innerHTML = `
+                    <label class="flex items-center gap-2 cursor-default">
+                        <input type="checkbox" disabled class="rounded border-slate-300 text-orbeon-500">
+                        <span class="text-sm font-medium text-slate-700">${escaparHtml(comp.label || comp.id)}</span>
+                    </label>
+                    ${comp.hint ? `<p class="text-xs text-amber-600 mt-1 ml-6">💡 Pista: ${escaparHtml(comp.hint)}</p>` : ''}`;
+            } else if (comp.tipo === 'select1' || comp.tipo === 'select' || comp.tipo === 'databound-select1') {
+                const items = comp.items || [];
+                const esDinamico = comp.metadatos?.itemsetDinamico === 'true';
+                const itemsetRef = comp.metadatos?.itemsetRef || '';
+                const resourceUrl = comp.metadatos?.resourceUrl || '';
+
+                let cuerpoSelect;
+                if (esDinamico) {
+                    cuerpoSelect = `
+                        <select disabled class="preview-input w-full border border-slate-300 rounded-md px-3 py-2 text-sm bg-slate-50 text-slate-500">
+                            <option>— Opciones dinámicas (${escaparHtml(itemsetRef)}) —</option>
+                        </select>
+                        <p class="text-[10px] text-violet-600 mt-1">🌐 Cargado en runtime desde servicio externo</p>
+                        ${resourceUrl ? `<p class="text-[10px] text-slate-400 font-mono truncate" title="${escaparHtml(resourceUrl)}">${escaparHtml(resourceUrl)}</p>` : ''}`;
+                } else {
+                    const opciones = items.length
+                        ? items.map(it => `<option value="${escaparHtml(it.value || '')}">${escaparHtml(it.label || it.value || '')}</option>`).join('')
+                        : '<option>— Sin opciones en recursos —</option>';
+                    const avisoItems = items.length > 20
+                        ? `<p class="text-[10px] text-slate-400 mt-1">${items.length} opciones en el desplegable</p>` : '';
+                    cuerpoSelect = `
+                        <select disabled class="preview-input w-full border border-slate-300 rounded-md px-3 py-2 text-sm bg-white text-slate-700">
+                            <option value="">— Seleccionar —</option>
+                            ${opciones}
+                        </select>
+                        ${avisoItems}`;
+                }
+                bloque.innerHTML = `
+                    <label class="block text-sm font-medium text-slate-700 mb-1">${escaparHtml(comp.label || comp.id)}</label>
+                    ${cuerpoSelect}
+                    ${comp.hint ? `<p class="text-xs text-amber-600 mt-1">💡 Pista: ${escaparHtml(comp.hint)}</p>` : ''}`;
+            } else {
+                bloque.innerHTML = `
+                    <label class="block text-sm font-medium text-slate-700 mb-1">${escaparHtml(comp.label || comp.id)}</label>
+                    <input type="text" disabled placeholder="Campo de entrada..."
+                           class="preview-input w-full border border-slate-300 rounded-md px-3 py-2 text-sm bg-white">
+                    ${comp.hint ? `<p class="text-xs text-amber-600 mt-1">💡 Pista: ${escaparHtml(comp.hint)}</p>` : ''}`;
+            }
+
+            contenedor.appendChild(bloque);
+        });
+    }
+
+    function procesarRespuesta(data, resetChangelog = true) {
+        componentes = data.componentes || [];
+        estructura = data.estructura || null;
+        xmlActual = data.xml || '';
+        $('#textareaXml').value = xmlActual;
+        if (resetChangelog) changeLog = [];
+        renderizarComponentes();
+        renderizarSecciones();
+        renderizarChangelog();
+        renderizarPreview();
+        habilitarExportacion(true);
+        renderizarDesplegablesAsistente();
+        if (!tabPreviewActiva) {
+            generarVistaPdf();
+        }
+    }
+
+    /* --- Asistente lenguaje natural --- */
+    const TIPOS_DESPLEGABLE = new Set(['select', 'select1', 'databound-select1']);
+
+    function obtenerDesplegables() {
+        return componentes.filter(c => TIPOS_DESPLEGABLE.has(c.tipo));
+    }
+
+    function esDesplegableDinamico(comp) {
+        return comp.metadatos?.itemsetDinamico === 'true'
+            || (comp.tipo === 'databound-select1' && (!comp.items || comp.items.length === 0));
+    }
+
+    function mostrarFeedbackDesplegable(mensaje, tipo = 'ok') {
+        const el = $('#desplegableFeedback');
+        const estilos = {
+            ok: 'bg-emerald-50 border-emerald-200 text-emerald-800',
+            error: 'bg-red-50 border-red-200 text-red-800',
+            info: 'bg-blue-50 border-blue-200 text-blue-800'
+        };
+        el.className = `mx-3 mt-2 px-3 py-2 rounded-md text-xs border ${estilos[tipo] || estilos.info}`;
+        el.textContent = mensaje;
+        el.classList.remove('hidden');
+        if (tipo === 'ok') {
+            setTimeout(() => el.classList.add('hidden'), 5000);
+        }
+    }
+
+    async function aplicarCambioDesplegable(changes, mensajeExito) {
+        if (!xmlActual) throw new Error('No hay XML cargado');
+        const res = await fetch(`${API}/modificar`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ xml: xmlActual, changes })
+        });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.error || res.statusText);
+        }
+        const data = await res.json();
+        const fallos = (data.applied || []).filter(a => a.startsWith('✗'));
+        if (fallos.length) {
+            throw new Error(fallos.join('; '));
+        }
+        const sync = await (await fetch(`${API}/sincronizar-codigo`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ xml: data.xml })
+        })).json();
+        procesarRespuesta(sync, false);
+        changeLog.push(...(data.applied || []));
+        renderizarChangelog();
+        mostrarFeedbackDesplegable(mensajeExito, 'ok');
+        mostrarToast(mensajeExito, 'ok');
+        return data;
+    }
+
+    function renderizarDesplegablesAsistente() {
+        const lista = $('#listaDesplegables');
+        const desplegables = obtenerDesplegables();
+        $('#cntDesplegables').textContent = desplegables.length;
+
+        if (!desplegables.length) {
+            lista.innerHTML = '<p class="text-slate-400 text-xs text-center py-6">No hay desplegables en el XML cargado</p>';
+            return;
+        }
+
+        const filtro = filtroDesplegable.toLowerCase();
+        const filtrados = desplegables.filter(c => {
+            if (!filtro) return true;
+            const fieldId = c.metadatos?.resourceKey || '';
+            return `${c.label} ${c.id} ${fieldId}`.toLowerCase().includes(filtro);
+        });
+
+        if (!filtrados.length) {
+            lista.innerHTML = '<p class="text-slate-400 text-xs text-center py-6">Ningún desplegable coincide con el filtro</p>';
+            return;
+        }
+
+        lista.innerHTML = '';
+        filtrados.forEach(comp => {
+            const fieldId = comp.metadatos?.resourceKey || comp.id.replace(/-control$/, '');
+            const dinamico = esDesplegableDinamico(comp);
+            const nItems = comp.items?.length || 0;
+            const expandido = desplegableExpandidoId === comp.id;
+            const badge = dinamico
+                ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-violet-100 text-violet-700">dinámico</span>'
+                : `<span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700">${nItems} opc.</span>`;
+
+            const card = document.createElement('div');
+            card.className = `border rounded-lg overflow-hidden transition ${expandido ? 'border-orbeon-500 shadow-sm' : 'border-slate-200'}`;
+            card.dataset.compId = comp.id;
+
+            let cuerpo = '';
+            if (expandido) {
+                if (dinamico) {
+                    const url = comp.metadatos?.resourceUrl || comp.metadatos?.itemsetRef || '';
+                    cuerpo = `
+                        <div class="px-3 py-2 bg-violet-50 text-xs text-violet-800 border-t border-violet-100">
+                            <p class="font-medium mb-1">Opciones cargadas en runtime (no editable aquí)</p>
+                            <p class="font-mono text-[10px] break-all">${escaparHtml(url)}</p>
+                        </div>`;
+                } else {
+                    const filas = (comp.items || []).map((it, i) => `
+                        <tr class="border-t border-slate-100 hover:bg-slate-50" data-item-idx="${i}">
+                            <td class="px-2 py-1.5">
+                                <input type="text" class="item-label w-full text-xs border border-slate-200 rounded px-1.5 py-0.5" value="${escaparHtml(it.label || '')}">
+                            </td>
+                            <td class="px-2 py-1.5">
+                                <input type="text" class="item-value w-full text-xs border border-slate-200 rounded px-1.5 py-0.5 font-mono" value="${escaparHtml(it.value || '')}" readonly>
+                            </td>
+                            <td class="px-1 py-1.5 whitespace-nowrap">
+                                <button type="button" class="btn-guardar-item text-[10px] px-1.5 py-0.5 bg-orbeon-500 text-white rounded" title="Guardar label">✓</button>
+                                <button type="button" class="btn-eliminar-item text-[10px] px-1.5 py-0.5 bg-red-500 text-white rounded ml-0.5" title="Eliminar">✕</button>
+                            </td>
+                        </tr>`).join('');
+
+                    cuerpo = `
+                        <div class="px-3 py-2 bg-slate-50 border-t border-slate-100">
+                            <table class="w-full text-xs">
+                                <thead><tr class="text-slate-500 text-left">
+                                    <th class="pb-1 font-medium">Label</th>
+                                    <th class="pb-1 font-medium">Valor</th>
+                                    <th class="pb-1 w-16"></th>
+                                </tr></thead>
+                                <tbody>${filas || '<tr><td colspan="3" class="py-2 text-slate-400 text-center">Sin opciones</td></tr>'}</tbody>
+                            </table>
+                            <div class="mt-2 pt-2 border-t border-slate-200 flex flex-wrap gap-1.5 items-end">
+                                <div class="flex-1 min-w-[80px]">
+                                    <label class="text-[10px] text-slate-500">Nueva label</label>
+                                    <input type="text" class="nueva-label w-full text-xs border border-slate-300 rounded px-1.5 py-1" placeholder="Ej: SENDA">
+                                </div>
+                                <div class="w-20">
+                                    <label class="text-[10px] text-slate-500">Valor</label>
+                                    <input type="text" class="nueva-value w-full text-xs border border-slate-300 rounded px-1.5 py-1 font-mono" placeholder="SND">
+                                </div>
+                                <button type="button" class="btn-anadir-item px-2 py-1 text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded">+ Añadir</button>
+                            </div>
+                        </div>`;
+                }
+            }
+
+            card.innerHTML = `
+                <button type="button" class="btn-toggle-desplegable w-full px-3 py-2 flex items-center gap-2 text-left hover:bg-slate-50 transition">
+                    <span class="text-slate-400 text-xs w-4">${expandido ? '▼' : '▶'}</span>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-xs font-medium text-slate-800 truncate">${escaparHtml(comp.label || fieldId)}</div>
+                        <div class="text-[10px] font-mono text-slate-400 truncate">${escaparHtml(fieldId)}</div>
+                    </div>
+                    ${badge}
+                </button>
+                ${cuerpo}`;
+
+            lista.appendChild(card);
+
+            const btnToggle = card.querySelector('.btn-toggle-desplegable');
+            btnToggle.addEventListener('click', () => {
+                desplegableExpandidoId = expandido ? null : comp.id;
+                renderizarDesplegablesAsistente();
+            });
+
+            if (expandido && !dinamico) {
+                card.querySelectorAll('.btn-guardar-item').forEach((btn, idx) => {
+                    btn.addEventListener('click', async () => {
+                        const row = card.querySelectorAll('tbody tr')[idx];
+                        const nuevoLabel = row.querySelector('.item-label').value.trim();
+                        const valor = comp.items[idx].value;
+                        if (!nuevoLabel) {
+                            mostrarFeedbackDesplegable('El label no puede estar vacío', 'error');
+                            return;
+                        }
+                        try {
+                            await aplicarCambioDesplegable([{
+                                type: 'update-select-item',
+                                fieldId,
+                                value: valor,
+                                label: nuevoLabel
+                            }], `Opción "${valor}" actualizada en ${fieldId}`);
+                            desplegableExpandidoId = comp.id;
+                        } catch (e) {
+                            mostrarFeedbackDesplegable('Error: ' + e.message, 'error');
+                            mostrarToast('Error: ' + e.message, 'error');
+                        }
+                    });
+                });
+
+                card.querySelectorAll('.btn-eliminar-item').forEach((btn, idx) => {
+                    btn.addEventListener('click', async () => {
+                        const valor = comp.items[idx].value;
+                        if (!confirm(`¿Eliminar opción "${valor}" de ${fieldId}?`)) return;
+                        try {
+                            await aplicarCambioDesplegable([{
+                                type: 'remove-select-item',
+                                fieldId,
+                                value: valor
+                            }], `Opción "${valor}" eliminada de ${fieldId}`);
+                            desplegableExpandidoId = comp.id;
+                        } catch (e) {
+                            mostrarFeedbackDesplegable('Error: ' + e.message, 'error');
+                            mostrarToast('Error: ' + e.message, 'error');
+                        }
+                    });
+                });
+
+                card.querySelector('.btn-anadir-item')?.addEventListener('click', async () => {
+                    const label = card.querySelector('.nueva-label').value.trim();
+                    const value = card.querySelector('.nueva-value').value.trim();
+                    if (!label || !value) {
+                        mostrarFeedbackDesplegable('Indica label y valor para la nueva opción', 'error');
+                        return;
+                    }
+                    try {
+                        await aplicarCambioDesplegable([{
+                            type: 'add-select-item',
+                            fieldId,
+                            label,
+                            value
+                        }], `Opción "${label}" (${value}) añadida a ${fieldId}`);
+                        desplegableExpandidoId = comp.id;
+                    } catch (e) {
+                        mostrarFeedbackDesplegable('Error: ' + e.message, 'error');
+                        mostrarToast('Error: ' + e.message, 'error');
+                    }
+                });
+            }
+        });
+    }
+
+    $('#buscarDesplegable').addEventListener('input', (e) => {
+        filtroDesplegable = e.target.value;
+        renderizarDesplegablesAsistente();
+    });
+
+    function agregarMensajeAsistente(instruccion, respuesta, ejecutado, intencion, esError = false) {
+        const hist = $('#asistenteHistorial');
+        if (hist.querySelector('p.text-center')) {
+            hist.innerHTML = '';
+        }
+        const bloque = document.createElement('div');
+        const esOk = ejecutado && !esError;
+        const borderCls = esError ? 'border-red-300' : esOk ? 'border-emerald-300' : 'border-slate-200';
+        const badge = esError ? 'bg-red-100 text-red-800'
+            : esOk ? 'bg-emerald-100 text-emerald-800'
+            : 'bg-slate-100 text-slate-600';
+        const icono = esError ? '✗' : esOk ? '✓' : 'ℹ';
+        bloque.className = `rounded-lg border ${borderCls} overflow-hidden text-sm`;
+        bloque.innerHTML = `
+            <div class="px-3 py-2 bg-white border-b border-slate-100 flex items-start gap-2">
+                <span class="text-[10px] px-1.5 py-0.5 rounded ${badge} shrink-0">${icono} ${escaparHtml(intencion || 'consulta')}</span>
+                <p class="text-slate-700 flex-1 text-xs">🗣 ${escaparHtml(instruccion)}</p>
+            </div>
+            <pre class="px-3 py-2 text-xs whitespace-pre-wrap font-sans ${esError ? 'bg-red-50 text-red-700' : 'bg-slate-50 text-slate-600'}">${escaparHtml(respuesta)}</pre>`;
+        hist.appendChild(bloque);
+        hist.scrollTop = hist.scrollHeight;
+    }
+
+    async function ejecutarAsistente() {
+        const instruccion = $('#inputAsistente').value.trim();
+        if (!instruccion) {
+            mostrarToast('Escribe una instrucción', 'error');
+            return;
+        }
+        if (!xmlActual) {
+            mostrarToast('Carga un XML primero', 'error');
+            return;
+        }
+        const aplicar = $('#chkAplicarIa').checked;
+        try {
+            mostrarToast('Procesando instrucción…', 'info');
+            const res = await fetch(`${API}/lenguaje-natural`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ xml: xmlActual, instruccion, aplicarCambios: aplicar })
+            });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.error || res.statusText);
+            }
+            const data = await res.json();
+            agregarMensajeAsistente(instruccion, data.respuesta, data.ejecutado, data.intencion, false);
+            if (data.ejecutado && data.xml) {
+                procesarRespuesta({
+                    xml: data.xml,
+                    componentes: data.componentes,
+                    estructura: data.estructura
+                }, false);
+                if (data.log?.length) {
+                    changeLog.push(...data.log.map(l => '✓ ' + l));
+                    renderizarChangelog();
+                }
+                mostrarToast('Cambios aplicados correctamente', 'ok');
+            } else if (!aplicar) {
+                mostrarToast('Consulta respondida', 'ok');
+            } else if (!data.ejecutado && data.respuesta) {
+                mostrarToast('Consulta completada', 'ok');
+            }
+            $('#inputAsistente').value = '';
+        } catch (err) {
+            agregarMensajeAsistente(instruccion, err.message, false, 'error', true);
+            mostrarToast('Error: ' + err.message, 'error');
+        }
+    }
+
+    $('#btnEnviarAsistente').addEventListener('click', ejecutarAsistente);
+    $('#inputAsistente').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) ejecutarAsistente();
+    });
+    document.querySelectorAll('.sugerencia-ia').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const texto = btn.textContent;
+            if (texto === 'Listar desplegables') {
+                cambiarTab('asistente');
+                desplegableExpandidoId = null;
+                renderizarDesplegablesAsistente();
+                $('#buscarDesplegable').focus();
+                mostrarFeedbackDesplegable(`${obtenerDesplegables().length} desplegables detectados. Pulsa ▶ para ver opciones y editar.`, 'info');
+            } else {
+                $('#inputAsistente').value = texto;
+                cambiarTab('asistente');
+            }
+        });
+    });
+
+    /* --- Cargar XML --- */
+    $('#inputXml').addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('archivo', file);
+
+        try {
+            mostrarToast('Cargando XML...', 'info');
+            const res = await fetch(`${API}/cargar`, { method: 'POST', body: formData });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.error || res.statusText);
+            }
+            const data = await res.json();
+            procesarRespuesta(data);
+            actualizarEstado(`${file.name} — ${componentes.length} componentes`);
+            mostrarToast(`XML cargado: ${componentes.length} componentes detectados`, 'ok');
+        } catch (err) {
+            mostrarToast('Error: ' + err.message, 'error');
+        }
+        e.target.value = '';
+    });
+
+    /* --- JSON modificaciones externo --- */
+    $('#inputJsonMod').addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        try {
+            const texto = await file.text();
+            jsonModificacionesExterno = JSON.parse(texto);
+            const n = jsonModificacionesExterno.changes?.length ?? (Array.isArray(jsonModificacionesExterno) ? jsonModificacionesExterno.length : 0);
+            mostrarToast(`JSON cargado (${n} entradas)`, 'ok');
+            if (jsonModificacionesExterno.changes) {
+                $('#jsonEditor').value = JSON.stringify(jsonModificacionesExterno, null, 2);
+            }
+        } catch (err) {
+            jsonModificacionesExterno = null;
+            mostrarToast('JSON inválido', 'error');
+        }
+        e.target.value = '';
+    });
+
+    /* --- Sincronizar desde código --- */
+    $('#btnSincronizar').addEventListener('click', async () => {
+        const xml = $('#textareaXml').value;
+        if (!xml.trim()) {
+            mostrarToast('El editor de código está vacío', 'error');
+            return;
+        }
+
+        try {
+            const res = await fetch(`${API}/sincronizar-codigo`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ xml })
+            });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.error || res.statusText);
+            }
+            const data = await res.json();
+            procesarRespuesta(data);
+            cambiarTab('guiado');
+            mostrarToast('Vista de diseño actualizada desde el código', 'ok');
+        } catch (err) {
+            mostrarToast('Error: ' + err.message, 'error');
+        }
+    });
+
+    /* --- Exportar XML --- */
+    $('#btnExportar').addEventListener('click', async () => {
+        const xml = $('#textareaXml').value || xmlActual;
+        if (!xml.trim()) {
+            mostrarToast('No hay XML para exportar', 'error');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('xmlActual', xml);
+
+        const mods = jsonModificacionesExterno || componentes;
+        const blob = new Blob([JSON.stringify(
+            jsonModificacionesExterno?.changes ? jsonModificacionesExterno : mods
+        )], { type: 'application/json' });
+        formData.append('modificaciones', blob, jsonModificacionesExterno?.changes ? 'changes.json' : 'modificaciones.json');
+
+        try {
+            const res = await fetch(`${API}/exportar`, { method: 'POST', body: formData });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.error || res.statusText);
+            }
+            const blobXml = await res.blob();
+            const url = URL.createObjectURL(blobXml);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'orbeon_formulario_modificado.xml';
+            a.click();
+            URL.revokeObjectURL(url);
+            mostrarToast('XML exportado correctamente', 'ok');
+        } catch (err) {
+            mostrarToast('Error al exportar: ' + err.message, 'error');
+        }
+    });
+
+    /* --- Comparación de XML --- */
+    async function ejecutarComparacion(archivoBase, archivoNuevo) {
+        const formData = new FormData();
+        formData.append('archivoBase', archivoBase);
+        formData.append('archivoNuevo', archivoNuevo);
+
+        mostrarToast('Comparando estructuras...', 'info');
+        const res = await fetch(`${API}/comparar`, { method: 'POST', body: formData });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.error || res.statusText);
+        }
+        comparacionActual = await res.json();
+        filtroComparacion = 'TODOS';
+        renderizarComparacion();
+        $('#modalComparar').classList.remove('hidden');
+        mostrarToast(`${comparacionActual.anadidos} añadidos, ${comparacionActual.eliminados} eliminados, ${comparacionActual.modificados} modificados`, 'ok');
+    }
+
+    $('#inputXmlComparar').addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file || !xmlActual) return;
+        try {
+            const blobBase = new Blob([xmlActual], { type: 'text/xml' });
+            const archivoBase = new File([blobBase], 'xml-base.xml', { type: 'text/xml' });
+            await ejecutarComparacion(archivoBase, file);
+        } catch (err) {
+            mostrarToast('Error: ' + err.message, 'error');
+        }
+        e.target.value = '';
+    });
+
+    $('#btnCompararDos').addEventListener('click', () => $('#modalCompararDos').classList.remove('hidden'));
+    $('#modalCompararDosFondo').addEventListener('click', () => $('#modalCompararDos').classList.add('hidden'));
+    $('#cancelarCompararDos').addEventListener('click', () => $('#modalCompararDos').classList.add('hidden'));
+
+    $('#ejecutarCompararDos').addEventListener('click', async () => {
+        const base = $('#inputBaseDos').files[0];
+        const nuevo = $('#inputNuevoDos').files[0];
+        if (!base || !nuevo) {
+            mostrarToast('Selecciona ambos archivos XML', 'error');
+            return;
+        }
+        try {
+            await ejecutarComparacion(base, nuevo);
+            $('#modalCompararDos').classList.add('hidden');
+        } catch (err) {
+            mostrarToast('Error: ' + err.message, 'error');
+        }
+    });
+
+    $('#cerrarComparar').addEventListener('click', () => $('#modalComparar').classList.add('hidden'));
+    $('#modalCompararFondo').addEventListener('click', () => $('#modalComparar').classList.add('hidden'));
+
+    document.querySelectorAll('.filtro-diff').forEach(btn => {
+        btn.addEventListener('click', () => {
+            filtroComparacion = btn.dataset.filtro;
+            document.querySelectorAll('.filtro-diff').forEach(b => {
+                b.classList.remove('bg-slate-800', 'text-white');
+                b.classList.add('bg-slate-100', 'text-slate-600');
+            });
+            btn.classList.remove('bg-slate-100', 'text-slate-600');
+            btn.classList.add('bg-slate-800', 'text-white');
+            renderizarComparacion();
+        });
+    });
+
+    function renderizarComparacion() {
+        if (!comparacionActual) return;
+        const c = comparacionActual;
+
+        $('#compararSubtitulo').textContent =
+            `${c.nombreBase || 'Base'} → ${c.nombreNuevo || 'Nuevo'} · ${c.totalBase} controles base · ${c.totalNuevo} controles nuevo · ${c.sinCambios} sin cambios`;
+
+        $('#compararResumen').innerHTML = `
+            <span class="px-3 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">+${c.anadidos} añadidos</span>
+            <span class="px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">-${c.eliminados} eliminados</span>
+            <span class="px-3 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">~${c.modificados} modificados</span>
+            <span class="px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600">=${c.sinCambios} iguales</span>
+        `;
+
+        const lista = $('#listaComparacion');
+        lista.innerHTML = '';
+
+        const diffs = c.diferencias.filter(d =>
+            filtroComparacion === 'TODOS' || d.tipoCambio === filtroComparacion
+        );
+
+        if (!diffs.length) {
+            lista.innerHTML = '<p class="text-slate-400 text-sm text-center py-8">No hay diferencias en este filtro.</p>';
+            return;
+        }
+
+        const colores = {
+            ANADIDO: 'border-emerald-400 bg-emerald-50',
+            ELIMINADO: 'border-red-400 bg-red-50',
+            MODIFICADO: 'border-amber-400 bg-amber-50'
+        };
+        const badges = {
+            ANADIDO: 'bg-emerald-600 text-white',
+            ELIMINADO: 'bg-red-600 text-white',
+            MODIFICADO: 'bg-amber-600 text-white'
+        };
+
+        diffs.forEach(d => {
+            const comp = d.componenteNuevo || d.componenteBase;
+            const tarjeta = document.createElement('div');
+            tarjeta.className = `border-l-4 rounded-lg p-4 ${colores[d.tipoCambio] || 'border-slate-300 bg-white'}`;
+
+            let detalle = '';
+            if (d.tipoCambio === 'MODIFICADO' && d.cambios?.length) {
+                detalle = d.cambios.map(ch => `
+                    <div class="mt-2 text-xs font-mono bg-white/70 rounded p-2 border border-slate-200">
+                        <span class="font-semibold text-slate-500">${escaparHtml(ch.campo)}:</span>
+                        <span class="text-red-600 line-through ml-1">${escaparHtml(ch.valorAnterior || '(vacío)')}</span>
+                        <span class="text-slate-400 mx-1">→</span>
+                        <span class="text-emerald-700">${escaparHtml(ch.valorNuevo || '(vacío)')}</span>
+                    </div>
+                `).join('');
+            } else {
+                const label = comp?.label || '(sin label)';
+                const tipo = comp?.tipo || '';
+                detalle = `<p class="text-sm text-slate-600 mt-1">${escaparHtml(tipo)} · ${escaparHtml(label)}</p>`;
+            }
+
+            tarjeta.innerHTML = `
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="text-xs px-2 py-0.5 rounded ${badges[d.tipoCambio]}">${d.tipoCambio}</span>
+                    <span class="text-xs font-mono text-slate-700">${escaparHtml(comp?.id || '')}</span>
+                </div>
+                ${detalle}
+            `;
+            lista.appendChild(tarjeta);
+        });
+    }
+</script>
+</body>
+</html>

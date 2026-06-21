@@ -1,0 +1,82 @@
+@startuml arquitectura-componentes
+skinparam componentStyle rectangle
+title Diagrama de componentes — Arquitectura Spring Boot
+
+package "Cliente" {
+  [index.html\nTailwind + JS] as UI
+}
+
+package "Spring Boot Application" {
+  package "Presentation" {
+    [FormularioController] as CTRL
+    [GlobalExceptionHandler] as EXH
+  }
+
+  package "Business" {
+    [OrbeonFormService] as FORM
+    [OrbeonStructureService] as STRUCT
+    [OrbeonModificationService] as MOD
+    [OrbeonCompareService] as CMP
+    [OrbeonPdfService] as PDF
+    [OrbeonLogoService] as LOGO
+    [OrbeonNaturalLanguageService] as NL
+  }
+
+  package "Infrastructure" {
+    [OrbeonResourceParser] as RES
+    [OrbeonXmlUtil] as XML
+  }
+
+  package "Domain" {
+    [model.*] as MODEL
+    [dto.*] as DTO
+  }
+}
+
+database "Archivos XML\n(PRE.txt, v39.txt)" as FILES
+cloud "CDN Tailwind\ncdn.tailwindcss.com" as CDN
+cloud "Servicios REST JCYL\n(solo referencia en XML)" as JCYL
+
+UI --> CTRL : HTTP REST
+UI ..> CDN : GET estilos
+CTRL --> FORM
+CTRL --> STRUCT
+CTRL --> MOD
+CTRL --> CMP
+CTRL --> PDF
+CTRL --> NL
+CTRL --> LOGO
+NL --> MOD
+NL --> LOGO
+NL --> FORM
+LOGO --> STRUCT
+CTRL --> DTO
+
+FORM --> RES
+FORM --> MODEL
+STRUCT --> RES
+STRUCT --> MODEL
+MOD --> XML
+CMP --> FORM
+PDF --> FORM
+
+UI ..> FILES : upload/download
+FORM ..> JCYL : itemset dinámico\n(no conectado)
+
+note right of NL
+  Parser reglas español
+  Sin API IA externa
+end note
+
+note right of PDF
+  OpenPDF 2.0.3
+  Vista previa mock
+end note
+
+note bottom of MOD
+  Motor changes[]
+  update-label, update-hint,
+  update-image, hide-section...
+end note
+
+@enduml

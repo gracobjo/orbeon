@@ -1,0 +1,23 @@
+@startuml secuencia-comparar
+title Secuencia — CU-08 Comparar versiones
+
+actor Usuario
+participant "index.html" as UI
+participant "FormularioController" as CTRL
+participant "OrbeonCompareService" as CMP
+participant "OrbeonFormService" as FORM
+
+Usuario -> UI : Selecciona XML base y nuevo
+UI -> CTRL : POST /api/formulario/comparar\n(archivoBase, archivoNuevo)
+CTRL -> FORM : parsearEstructuraDesdeString(xmlBase)
+FORM --> CTRL : List base
+CTRL -> FORM : parsearEstructuraDesdeString(xmlNuevo)
+FORM --> CTRL : List nuevo
+CTRL -> CMP : comparar(xmlBase, xmlNuevo, nombres)
+CMP -> CMP : indexarPorId()\ndetectarCambios()
+CMP --> CTRL : ComparacionResponse\n{resumen, diferencias[]}
+CTRL --> UI : JSON comparación
+UI -> UI : mostrarModalComparacion()
+UI --> Usuario : Resumen + detalle\nANADIDO / ELIMINADO / MODIFICADO
+
+@enduml

@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Orbeon XML Editor</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3350;
+    --accent: #5b7fff;
+    --accent2: #7c5cfc;
+    --success: #22c55e;
+    --warn: #f59e0b;
+    --danger: #ef4444;
+    --text: #e2e8f0;
+    --muted: #7c88a8;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; min-height: 100vh; }
+
+  /* ── Layout ── */
+  .app { display: grid; grid-template-columns: 280px 1fr; grid-template-rows: 56px 1fr; height: 100vh; overflow: hidden; }
+  .topbar { grid-column: 1/-1; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 20px; gap: 16px; }
+  .topbar h1 { font-size: 16px; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 8px; }
+  .topbar h1 span { font-size: 20px; }
+  .sidebar { background: var(--surface); border-right: 1px solid var(--border); overflow-y: auto; padding: 16px 12px; display: flex; flex-direction: column; gap: 8px; }
+  .main { overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 20px; }
+
+  /* ── Badges ── */
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .badge-blue { background: #1e3a8a33; color: #93c5fd; border: 1px solid #1e40af44; }
+  .badge-green { background: #14532d33; color: #86efac; border: 1px solid #15803d44; }
+  .badge-amber { background: #78350f33; color: #fcd34d; border: 1px solid #92400e44; }
+  .badge-purple { background: #4c1d9533; color: #c4b5fd; border: 1px solid #5b21b644; }
+  .badge-red { background: #7f1d1d33; color: #fca5a5; border: 1px solid #991b1b44; }
+  .badge-gray { background: #1e293b; color: var(--muted); border: 1px solid var(--border); }
+
+  /* ── Botones ── */
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 7px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; transition: all .15s; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #4a6fff; }
+  .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-success { background: #166534; color: #86efac; border: 1px solid #15803d44; }
+  .btn-success:hover { background: #14532d; }
+  .btn-danger { background: #7f1d1d33; color: #fca5a5; border: 1px solid #991b1b44; }
+  .btn-danger:hover { background: #7f1d1d55; }
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+  .btn:disabled { opacity: .4; cursor: default; }
+
+  /* ── Cards ── */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .card-header { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 12px; background: var(--surface2); }
+  .card-header h2 { font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+  .card-body { padding: 18px; }
+
+  /* ── Sidebar nav ── */
+  .nav-section { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--muted); letter-spacing: .08em; padding: 8px 8px 4px; }
+  .nav-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 7px; cursor: pointer; color: var(--muted); font-size: 13px; font-weight: 500; transition: all .12s; border: none; background: none; width: 100%; text-align: left; }
+  .nav-item:hover { background: var(--surface2); color: var(--text); }
+  .nav-item.active { background: #1e3a8a33; color: #93c5fd; }
+  .nav-item .icon { font-size: 15px; min-width: 18px; }
+  .nav-item .count { margin-left: auto; font-size: 11px; background: var(--surface2); padding: 1px 6px; border-radius: 10px; }
+
+  /* ── Upload zone ── */
+  .upload-zone { border: 2px dashed var(--border); border-radius: var(--radius); padding: 40px 20px; text-align: center; cursor: pointer; transition: all .15s; }
+  .upload-zone:hover, .upload-zone.drag { border-color: var(--accent); background: #1e3a8a11; }
+  .upload-zone .icon { font-size: 36px; margin-bottom: 12px; }
+  .upload-zone p { color: var(--muted); font-size: 13px; }
+  .upload-zone strong { color: var(--text); }
+
+  /* ── Secciones del formulario ── */
+  .section-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 12px; }
+  .section-header { padding: 12px 16px; background: var(--surface2); display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; }
+  .section-header:hover { background: #22263aee; }
+  .section-title { font-weight: 700; font-size: 14px; flex: 1; }
+  .section-body { padding: 0; }
+  .section-collapsed .section-body { display: none; }
+
+  /* ── Tabla de campos ── */
+  .fields-table { width: 100%; border-collapse: collapse; }
+  .fields-table th { padding: 8px 14px; text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--muted); background: #12151e; border-bottom: 1px solid var(--border); }
+  .fields-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: top; }
+  .fields-table tr:last-child td { border-bottom: none; }
+  .fields-table tr:hover td { background: #1e2235; }
+  .field-id { font-family: monospace; font-size: 11px; color: var(--muted); }
+  .field-label { font-weight: 600; color: var(--text); }
+  .field-hint { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  /* ── Log de cambios ── */
+  .changelog-item { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .changelog-item:last-child { border-bottom: none; }
+  .changelog-ok { color: var(--success); font-size: 15px; }
+  .changelog-err { color: var(--danger); font-size: 15px; }
+
+  /* ── Editor JSON ── */
+  .json-editor { background: #12151e; border: 1px solid var(--border); border-radius: 7px; padding: 14px; font-family: 'Consolas', 'Monaco', monospace; font-size: 12px; color: #e2e8f0; width: 100%; min-height: 220px; resize: vertical; line-height: 1.6; }
+  .json-editor:focus { outline: none; border-color: var(--accent); }
+
+  /* ── Toast ── */
+  #toast { position: fixed; bottom: 24px; right: 24px; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 18px; font-size: 13px; max-width: 380px; box-shadow: 0 8px 32px #0008; transform: translateY(80px); opacity: 0; transition: all .3s; z-index: 999; }
+  #toast.show { transform: translateY(0); opacity: 1; }
+  #toast.ok { border-color: var(--success); color: #86efac; }
+  #toast.err { border-color: var(--danger); color: #fca5a5; }
+
+  /* ── Misc ── */
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .empty-state .icon { font-size: 48px; margin-bottom: 16px; }
+  .flex-gap { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .status-dot.ok { background: var(--success); box-shadow: 0 0 6px var(--success); }
+  .status-dot.off { background: var(--muted); }
+  input[type=file] { display: none; }
+  .tab-bar { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+  .tab { padding: 8px 16px; border-radius: 7px 7px 0 0; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--muted); border: 1px solid transparent; border-bottom: none; }
+  .tab.active { background: var(--surface); border-color: var(--border); color: var(--accent); margin-bottom: -1px; }
+  .tab:hover:not(.active) { color: var(--text); }
+  .info-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+  .info-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
+  .info-card .label { font-size: 11px; color: var(--muted); text-transform: uppercase; font-weight: 700; margin-bottom: 4px; }
+  .info-card .value { font-size: 22px; font-weight: 800; color: var(--text); }
+  .info-card .sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .search-box { background: var(--surface2); border: 1px solid var(--border); border-radius: 7px; padding: 7px 12px; color: var(--text); font-size: 13px; width: 100%; }
+  .search-box:focus { outline: none; border-color: var(--accent); }
+  pre { background: #12151e; border: 1px solid var(--border); border-radius: 7px; padding: 14px; font-size: 12px; overflow: auto; max-height: 400px; color: #a5b4fc; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- TopBar -->
+  <header class="topbar">
+    <h1><span>🧩</span> Orbeon XML Editor</h1>
+    <div style="margin-left:auto; display:flex; align-items:center; gap:12px;">
+      <span id="statusDot" class="status-dot off"></span>
+      <span id="statusText" style="color:var(--muted); font-size:13px;">Sin fichero cargado</span>
+      <button class="btn btn-secondary btn-sm" onclick="loadNewFile()">📂 Cargar XML</button>
+      <button class="btn btn-success btn-sm" id="btnExport" disabled onclick="exportXml()">⬇️ Exportar XML</button>
+    </div>
+    <input type="file" id="xmlFileInput" accept=".xml,.txt" onchange="onXmlFileSelected(event)">
+  </header>
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="nav-section">Vistas</div>
+    <button class="nav-item active" onclick="showTab('overview')" id="nav-overview">
+      <span class="icon">📊</span> Resumen
+    </button>
+    <button class="nav-item" onclick="showTab('sections')" id="nav-sections">
+      <span class="icon">📋</span> Secciones
+      <span class="count" id="cnt-sections">—</span>
+    </button>
+    <button class="nav-item" onclick="showTab('images')" id="nav-images">
+      <span class="icon">🖼️</span> Imágenes
+      <span class="count" id="cnt-images">—</span>
+    </button>
+    <button class="nav-item" onclick="showTab('modify')" id="nav-modify">
+      <span class="icon">✏️</span> Modificar
+    </button>
+    <button class="nav-item" onclick="showTab('changelog')" id="nav-changelog">
+      <span class="icon">📝</span> Cambios
+      <span class="count" id="cnt-changelog">0</span>
+    </button>
+    <button class="nav-item" onclick="showTab('schema')" id="nav-schema">
+      <span class="icon">📖</span> Esquema JSON
+    </button>
+
+    <div class="nav-section" style="margin-top:auto;">Fichero</div>
+    <div style="padding:8px 10px; font-size:12px; color:var(--muted); word-break:break-all;" id="sidebarFilename">—</div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main" id="mainContent">
+    <!-- Tab: Overview (default) -->
+    <div id="tab-overview">
+      <div id="dropZone" class="upload-zone" ondragover="onDrag(event,true)" ondragleave="onDrag(event,false)" ondrop="onDrop(event)">
+        <div class="icon">📄</div>
+        <strong>Arrastra tu XML de Orbeon aquí</strong>
+        <p style="margin-top:8px;">o <a href="#" onclick="loadNewFile()" style="color:var(--accent)">haz clic para seleccionar</a></p>
+        <p style="margin-top:4px; font-size:12px;">Formatos: .xml, .txt</p>
+      </div>
+      <div id="overviewContent" style="display:none;">
+        <div class="info-grid" id="infoGrid"></div>
+        <div style="margin-top:20px;">
+          <div class="card">
+            <div class="card-header"><h2>⚙️ Instancias XForms</h2></div>
+            <div class="card-body" id="instancesList"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Sections -->
+    <div id="tab-sections" style="display:none;">
+      <div class="flex-gap" style="margin-bottom:16px;">
+        <input class="search-box" placeholder="🔍 Buscar campo o sección..." oninput="filterFields(this.value)" style="max-width:340px;">
+        <span id="fieldCount" style="color:var(--muted); font-size:13px;"></span>
+      </div>
+      <div id="sectionsContainer"></div>
+    </div>
+
+    <!-- Tab: Images -->
+    <div id="tab-images" style="display:none;">
+      <div class="card">
+        <div class="card-header"><h2>🖼️ Imágenes / Logos detectados</h2></div>
+        <div class="card-body" id="imagesContainer">
+          <div class="empty-state"><div class="icon">🖼️</div><p>Carga un XML primero</p></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Modify -->
+    <div id="tab-modify" style="display:none;">
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-header"><h2>📤 Cargar fichero de modificaciones</h2></div>
+        <div class="card-body">
+          <p style="color:var(--muted); margin-bottom:14px;">Sube un fichero JSON con los cambios a aplicar sobre el XML cargado.</p>
+          <div id="modDropZone" class="upload-zone" style="padding:24px;" ondragover="onDrag(event,true,'modDropZone')" ondragleave="onDrag(event,false,'modDropZone')" ondrop="onModDrop(event)">
+            <strong>Arrastra el fichero .json aquí</strong>
+            <p style="margin-top:6px; font-size:12px;">o <a href="#" onclick="document.getElementById('modFileInput').click()" style="color:var(--accent)">selecciona el fichero</a></p>
+          </div>
+          <input type="file" id="modFileInput" accept=".json" onchange="onModFileSelected(event)">
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h2>✍️ Editor de modificaciones</h2>
+          <div class="flex-gap">
+            <button class="btn btn-secondary btn-sm" onclick="loadTemplate()">📋 Plantilla</button>
+            <button class="btn btn-primary btn-sm" onclick="applyJsonEditor()">▶ Aplicar</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <textarea id="jsonEditor" class="json-editor" placeholder='{"changes": [...]}'></textarea>
+          <div id="modResult" style="margin-top:12px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Changelog -->
+    <div id="tab-changelog" style="display:none;">
+      <div class="card">
+        <div class="card-header">
+          <h2>📝 Registro de cambios</h2>
+          <button class="btn btn-secondary btn-sm" onclick="refreshChangelog()">🔄 Actualizar</button>
+        </div>
+        <div class="card-body" id="changelogContainer">
+          <div class="empty-state"><div class="icon">📝</div><p>No hay cambios aún</p></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Schema -->
+    <div id="tab-schema" style="display:none;">
+      <div class="card">
+        <div class="card-header"><h2>📖 Esquema del fichero de modificaciones</h2></div>
+        <div class="card-body" id="schemaContainer">
+          <div class="empty-state"><div class="icon">⏳</div><p>Cargando...</p></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── Estado ────────────────────────────────────────────────────────────────
+let formData = null;
+let currentTab = 'overview';
+
+// ── Init ──────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  checkStatus();
+  loadSchema();
+});
+
+async function checkStatus() {
+  try {
+    const r = await fetch('/api/status');
+    const d = await r.json();
+    if (d.loaded) {
+      updateStatusUI(true, d.fileName);
+      await loadStructure();
+    }
+  } catch(e) {}
+}
+
+// ── Tabs ──────────────────────────────────────────────────────────────────
+function showTab(name) {
+  ['overview','sections','images','modify','changelog','schema'].forEach(t => {
+    document.getElementById('tab-' + t).style.display = t === name ? '' : 'none';
+    document.getElementById('nav-' + t)?.classList.toggle('active', t === name);
+  });
+  currentTab = name;
+  if (name === 'changelog') refreshChangelog();
+}
+
+// ── Carga XML ─────────────────────────────────────────────────────────────
+function loadNewFile() { document.getElementById('xmlFileInput').click(); }
+
+async function onXmlFileSelected(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  await uploadXml(file);
+}
+
+function onDrag(e, enter, zone) {
+  e.preventDefault();
+  (document.getElementById(zone || 'dropZone')).classList.toggle('drag', enter);
+}
+
+async function onDrop(e) {
+  e.preventDefault();
+  document.getElementById('dropZone').classList.remove('drag');
+  const file = e.dataTransfer.files[0];
+  if (file) await uploadXml(file);
+}
+
+async function uploadXml(file) {
+  const fd = new FormData();
+  fd.append('file', file);
+  showToast('⏳ Cargando XML...', '');
+  try {
+    const r = await fetch('/api/load', { method: 'POST', body: fd });
+    const d = await r.json();
+    if (d.error) { showToast('❌ ' + d.message, 'err'); return; }
+    showToast('✅ ' + d.message, 'ok');
+    updateStatusUI(true, file.name);
+    await loadStructure();
+    if (currentTab === 'overview') renderOverview();
+  } catch(e) { showToast('❌ Error de red: ' + e.message, 'err'); }
+}
+
+async function loadStructure() {
+  try {
+    const r = await fetch('/api/structure');
+    formData = await r.json();
+    if (formData.error) { showToast('❌ ' + formData.message, 'err'); return; }
+    renderOverview();
+    renderSections();
+    renderImages();
+    // Actualizar contadores sidebar
+    document.getElementById('cnt-sections').textContent = formData.sections?.length || 0;
+    document.getElementById('cnt-images').textContent = formData.images?.length || 0;
+    document.getElementById('sidebarFilename').textContent = formData.fileName || '';
+    const totalFields = (formData.sections || []).reduce((a,s) => a + (s.fields?.length || 0), 0);
+    document.getElementById('fieldCount').textContent = totalFields + ' campos totales';
+  } catch(e) { showToast('❌ Error al cargar estructura: ' + e.message, 'err'); }
+}
+
+// ── Resumen ───────────────────────────────────────────────────────────────
+function renderOverview() {
+  if (!formData) return;
+  document.getElementById('dropZone').style.display = 'none';
+  document.getElementById('overviewContent').style.display = '';
+
+  const totalFields = (formData.sections || []).reduce((a,s) => a + (s.fields||[]).length, 0);
+  const hiddenSections = (formData.sections || []).filter(s => s.noPrintInPdf).length;
+
+  document.getElementById('infoGrid').innerHTML = [
+    { label: 'Título', value: formData.title || '—', sub: '', color: '' },
+    { label: 'Fichero', value: formData.fileName || '—', sub: '', color: '' },
+    { label: 'Secciones', value: formData.sections?.length || 0, sub: hiddenSections + ' ocultas en PDF', color: '' },
+    { label: 'Campos', value: totalFields, sub: 'inputs, selects, etc.', color: '' },
+    { label: 'Imágenes', value: formData.images?.length || 0, sub: 'logos y adjuntos', color: '' },
+    { label: 'Instancias', value: formData.instances?.length || 0, sub: 'XForms instances', color: '' },
+  ].map(i => `
+    <div class="info-card">
+      <div class="label">${i.label}</div>
+      <div class="value" style="font-size:${String(i.value).length > 12 ? '13px' : '20px'}; word-break:break-all;">${i.value}</div>
+      ${i.sub ? `<div class="sub">${i.sub}</div>` : ''}
+    </div>`).join('');
+
+  document.getElementById('instancesList').innerHTML = (formData.instances || [])
+    .map(id => `<span class="badge badge-blue" style="margin:3px;">${id}</span>`).join('') || '<span style="color:var(--muted)">—</span>';
+}
+
+// ── Secciones ─────────────────────────────────────────────────────────────
+function renderSections() {
+  if (!formData) return;
+  const container = document.getElementById('sectionsContainer');
+  container.innerHTML = (formData.sections || []).map((sec, i) => {
+    const typeMap = {
+      'input':'🔤','select1':'▾','select':'☑','textarea':'📝','number':'🔢',
+      'date':'📅','checkbox':'☑','explanation':'ℹ','image':'🖼','attachment':'📎',
+      'databound-select1':'🗄','text':'📄'
+    };
+    const rows = (sec.fields || []).map(f => `
+      <tr>
+        <td><span class="badge badge-gray">${typeMap[f.type]||'?'} ${f.type}</span></td>
+        <td>
+          <div class="field-label">${escHtml(f.label || '—')}</div>
+          ${f.hint ? `<div class="field-hint">💡 ${escHtml(f.hint)}</div>` : ''}
+          ${f.alert ? `<div class="field-hint" style="color:#fcd34d;">⚠ ${escHtml(f.alert)}</div>` : ''}
+        </td>
+        <td class="field-id">${f.bind || f.ref || f.id || '—'}</td>
+        ${f.items?.length ? `<td><span class="badge badge-purple">${f.items.length} opciones</span></td>` : '<td></td>'}
+      </tr>`).join('');
+
+    return `
+      <div class="section-card" id="sec-${i}">
+        <div class="section-header" onclick="toggleSection(${i})">
+          <span style="font-size:18px;">${sec.noPrintInPdf ? '🚫' : '📋'}</span>
+          <span class="section-title">${escHtml(sec.label || sec.id || '(sin título)')}</span>
+          <span class="badge ${sec.noPrintInPdf ? 'badge-red' : 'badge-green'}">${sec.noPrintInPdf ? 'Oculta PDF' : 'Visible PDF'}</span>
+          <span class="badge badge-blue">${sec.fields?.length || 0} campos</span>
+          <span class="badge badge-gray">${sec.gridCount || 0} grids</span>
+          <span style="color:var(--muted); margin-left:8px; font-size:18px;">▾</span>
+        </div>
+        <div class="section-body">
+          ${rows ? `<table class="fields-table">
+            <thead><tr><th>Tipo</th><th>Label / Hint</th><th>Bind/ID</th><th>Info</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>` : '<div style="padding:16px; color:var(--muted);">Sin campos detectados</div>'}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function toggleSection(i) {
+  document.getElementById('sec-' + i)?.classList.toggle('section-collapsed');
+}
+
+function filterFields(q) {
+  if (!formData) return;
+  q = q.toLowerCase();
+  document.querySelectorAll('.section-card').forEach((card, i) => {
+    const sec = formData.sections[i];
+    const matchSec = (sec.label || '').toLowerCase().includes(q) || (sec.id || '').toLowerCase().includes(q);
+    const rows = card.querySelectorAll('tbody tr');
+    let anyVisible = false;
+    rows.forEach((row, j) => {
+      const f = sec.fields[j];
+      const match = q === '' || matchSec || (f.label||'').toLowerCase().includes(q) ||
+        (f.hint||'').toLowerCase().includes(q) || (f.bind||'').toLowerCase().includes(q) ||
+        (f.type||'').toLowerCase().includes(q);
+      row.style.display = match ? '' : 'none';
+      if (match) anyVisible = true;
+    });
+    card.style.display = (q === '' || matchSec || anyVisible) ? '' : 'none';
+    if (q && anyVisible) card.classList.remove('section-collapsed');
+  });
+}
+
+// ── Imágenes ──────────────────────────────────────────────────────────────
+function renderImages() {
+  if (!formData) return;
+  const imgs = formData.images || [];
+  const c = document.getElementById('imagesContainer');
+  if (!imgs.length) {
+    c.innerHTML = '<div class="empty-state"><div class="icon">🖼️</div><p>No se detectaron imágenes embebidas</p></div>';
+    return;
+  }
+  c.innerHTML = `<table class="fields-table">
+    <thead><tr><th>Tag XML</th><th>Filename</th><th>Mediatype</th><th>Src (preview)</th></tr></thead>
+    <tbody>
+      ${imgs.map(img => `<tr>
+        <td class="field-id">${escHtml(img.tag)}</td>
+        <td>${escHtml(img.filename || '—')}</td>
+        <td><span class="badge badge-blue">${escHtml(img.mediatype || '—')}</span></td>
+        <td class="field-id" style="max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escHtml((img.src||'').substring(0,80))}</td>
+      </tr>`).join('')}
+    </tbody>
+  </table>`;
+}
+
+// ── Modificaciones ────────────────────────────────────────────────────────
+async function onModDrop(e) {
+  e.preventDefault();
+  document.getElementById('modDropZone').classList.remove('drag');
+  const file = e.dataTransfer.files[0];
+  if (file) await readModFile(file);
+}
+
+async function onModFileSelected(e) {
+  const file = e.target.files[0];
+  if (file) await readModFile(file);
+}
+
+async function readModFile(file) {
+  const text = await file.text();
+  document.getElementById('jsonEditor').value = text;
+  showToast('📋 Fichero cargado en el editor', 'ok');
+}
+
+async function applyJsonEditor() {
+  const txt = document.getElementById('jsonEditor').value.trim();
+  if (!txt) { showToast('❌ El editor está vacío', 'err'); return; }
+  let json;
+  try { json = JSON.parse(txt); } catch(e) { showToast('❌ JSON inválido: ' + e.message, 'err'); return; }
+
+  showToast('⏳ Aplicando cambios...', '');
+  try {
+    const r = await fetch('/api/modify', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(json)
+    });
+    const d = await r.json();
+    if (d.error) { showToast('❌ ' + d.message, 'err'); return; }
+
+    const applied = d.applied || [];
+    const ok = applied.filter(x => x.startsWith('✓')).length;
+    const err = applied.filter(x => x.startsWith('✗')).length;
+    showToast(`✅ ${ok} cambio(s) aplicados${err ? ', ' + err + ' errores' : ''}`, ok > 0 ? 'ok' : 'err');
+
+    document.getElementById('modResult').innerHTML = `
+      <div style="display:flex; gap:8px; margin-bottom:10px;">
+        <span class="badge badge-green">✓ ${ok} ok</span>
+        ${err ? `<span class="badge badge-red">✗ ${err} errores</span>` : ''}
+      </div>
+      ${applied.map(a => `<div class="changelog-item">
+        <span class="${a.startsWith('✓') ? 'changelog-ok' : 'changelog-err'}">${a.startsWith('✓') ? '✓' : '✗'}</span>
+        <span>${escHtml(a.substring(2))}</span>
+      </div>`).join('')}`;
+
+    document.getElementById('cnt-changelog').textContent = parseInt(document.getElementById('cnt-changelog').textContent || '0') + ok;
+    await loadStructure(); // refrescar estructura
+  } catch(e) { showToast('❌ Error: ' + e.message, 'err'); }
+}
+
+function loadTemplate() {
+  const template = {
+    "changes": [
+      { "type": "update-label", "fieldId": "CAMPO_ID", "label": "Nuevo texto del label" },
+      { "type": "update-hint",  "fieldId": "CAMPO_ID", "hint": "Nuevo texto de ayuda" },
+      { "type": "update-image", "imageTag": "TAG_IMAGEN", "filename": "nuevo_logo.png", "mediatype": "image/png", "src": "/ruta/al/logo.bin" },
+      { "type": "hide-section", "sectionId": "ID_SECCION-section" },
+      { "type": "update-bind",  "bindId": "CAMPO_ID-bind", "attributes": { "required": "false()" } }
+    ]
+  };
+  document.getElementById('jsonEditor').value = JSON.stringify(template, null, 2);
+}
+
+// ── Changelog ─────────────────────────────────────────────────────────────
+async function refreshChangelog() {
+  try {
+    const r = await fetch('/api/changelog');
+    const d = await r.json();
+    const changes = d.changes || [];
+    document.getElementById('cnt-changelog').textContent = changes.length;
+    const c = document.getElementById('changelogContainer');
+    if (!changes.length) {
+      c.innerHTML = '<div class="empty-state"><div class="icon">📝</div><p>No hay cambios registrados</p></div>';
+      return;
+    }
+    c.innerHTML = changes.map((ch, i) => `
+      <div class="changelog-item">
+        <span class="changelog-ok">✓</span>
+        <span style="color:var(--muted); font-size:11px; min-width:28px;">#${i+1}</span>
+        <span>${escHtml(ch)}</span>
+      </div>`).join('');
+  } catch(e) {}
+}
+
+// ── Esquema ───────────────────────────────────────────────────────────────
+async function loadSchema() {
+  try {
+    const r = await fetch('/api/schema');
+    const d = await r.json();
+    const c = document.getElementById('schemaContainer');
+    const types = (d.availableTypes || []).map(t => `<div style="padding:4px 0; font-family:monospace; font-size:12px; color:#a5b4fc;">${escHtml(t)}</div>`).join('');
+    c.innerHTML = `
+      <p style="color:var(--muted); margin-bottom:16px;">${d.description}</p>
+      <h3 style="margin-bottom:10px; font-size:13px;">Tipos de cambio disponibles:</h3>
+      <div style="background:#12151e; border:1px solid var(--border); border-radius:7px; padding:14px; margin-bottom:16px;">${types}</div>
+      <h3 style="margin-bottom:10px; font-size:13px;">Ejemplo completo:</h3>
+      <pre>${escHtml(JSON.stringify(d.exampleFile, null, 2))}</pre>`;
+  } catch(e) {}
+}
+
+// ── Export ────────────────────────────────────────────────────────────────
+async function exportXml() {
+  showToast('⏳ Preparando descarga...', '');
+  try {
+    const r = await fetch('/api/export');
+    if (!r.ok) { showToast('❌ Error al exportar', 'err'); return; }
+    const blob = await r.blob();
+    const cd = r.headers.get('Content-Disposition') || '';
+    const match = cd.match(/filename="([^"]+)"/);
+    const filename = match ? match[1] : 'formulario_modificado.xml';
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
+    showToast('✅ XML descargado: ' + filename, 'ok');
+  } catch(e) { showToast('❌ Error: ' + e.message, 'err'); }
+}
+
+// ── UI helpers ────────────────────────────────────────────────────────────
+function updateStatusUI(loaded, filename) {
+  document.getElementById('statusDot').className = 'status-dot ' + (loaded ? 'ok' : 'off');
+  document.getElementById('statusText').textContent = loaded ? filename : 'Sin fichero cargado';
+  document.getElementById('btnExport').disabled = !loaded;
+}
+
+let toastTimer;
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'show ' + (type || '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.className = '', 3500);
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
