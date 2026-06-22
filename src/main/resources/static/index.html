@@ -25,6 +25,15 @@
         .clickable-result { cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; }
         .clickable-result:hover { border-color: #2563eb; box-shadow: 0 0 0 1px #2563eb33; }
         #textareaXml::selection { background: #fbbf24; color: #1e293b; }
+        .xml-nav-field {
+            cursor: pointer;
+            transition: color 0.12s, border-color 0.12s, background 0.12s;
+        }
+        .xml-nav-field:hover {
+            color: #1d4ed8;
+            border-color: #93c5fd;
+            background: #eff6ff;
+        }
         .nav-highlight {
             animation: nav-pulse 2.2s ease-out;
             outline: 2px solid #2563eb;
@@ -592,23 +601,86 @@
     }
 
     /* --- Navegación XML + editor CRUD contextual --- */
-    function buscarPosicionEnXml(terminos) {
+    let xmlNavUltimoCampo = null;
+    let xmlNavIndice = 0;
+
+    function patronesBusquedaXml(t) {
+        if (!t) return [];
+        const local = t.replace(/-bind$/, '');
+        return [
+            `id="${t}"`, `id='${t}'`,
+            `name="${t}"`, `name='${t}'`,
+            `ref="${t}"`, `ref='${t}'`,
+            `bind="${t}"`, `bind='${t}'`,
+            `<${t} `, `<${t}>`,
+            `<${local} `, `<${local}>`
+        ];
+    }
+
+    function buscarTodasPosicionesEnXml(terminos) {
         const xml = $('#textareaXml').value || xmlActual || '';
         const lista = Array.isArray(terminos) ? terminos : [terminos];
+        const resultados = [];
+        const idxVistos = new Set();
         for (const t of lista) {
             if (!t) continue;
-            const candidatos = [
-                `id="${t}"`, `id='${t}'`,
-                `<${t} `, `<${t}>`,
-                `name="${t}"`, `ref="${t}"`,
-                `<${t.replace(/-bind$/, '')}`
-            ];
-            for (const p of candidatos) {
-                const idx = xml.indexOf(p);
-                if (idx >= 0) return { idx, len: Math.min(p.length + 20, xml.length - idx), termino: t };
+            for (const p of patronesBusquedaXml(t)) {
+                let start = 0;
+                while (start < xml.length) {
+                    const idx = xml.indexOf(p, start);
+                    if (idx < 0) break;
+                    if (!idxVistos.has(idx)) {
+                        idxVistos.add(idx);
+                        resultados.push({
+                            idx,
+                            len: Math.min(p.length + 40, xml.length - idx),
+                            termino: t,
+                            patron: p
+                        });
+                    }
+                    start = idx + 1;
+                }
             }
         }
-        return null;
+        return resultados.sort((a, b) => a.idx - b.idx);
+    }
+
+    function buscarPosicionEnXml(terminos) {
+        const todas = buscarTodasPosicionesEnXml(terminos);
+        return todas.length ? todas[0] : null;
+    }
+
+    function scrollTextareaASeleccion(ta) {
+        const lineas = ta.value.substring(0, ta.selectionStart).split('\n').length;
+        const lineHeight = parseInt(getComputedStyle(ta).lineHeight, 10) || 16;
+        const padding = parseInt(getComputedStyle(ta).paddingTop, 10) || 0;
+        ta.scrollTop = Math.max(0, (lineas - 4) * lineHeight - padding);
+    }
+
+    function irACodigoXmlTermino(termino, indiceOcurrencia = 0, cambiarPestaña = true) {
+        if (!xmlActual && !$('#textareaXml').value) {
+            mostrarToast('Carga un XML primero', 'error');
+            return false;
+        }
+        if (cambiarPestaña) cambiarTab('codigo');
+        const ta = $('#textareaXml');
+        if (!ta.value.trim()) ta.value = xmlActual;
+        const posiciones = buscarTodasPosicionesEnXml(termino);
+        if (!posiciones.length) {
+            mostrarToast(`No localizado en XML: ${termino}`, 'info');
+            return false;
+        }
+        const idx = indiceOcurrencia % posiciones.length;
+        const pos = posiciones[idx];
+        ta.focus();
+        const fin = Math.min(pos.idx + pos.len, ta.value.length);
+        ta.setSelectionRange(pos.idx, fin);
+        scrollTextareaASeleccion(ta);
+        const msg = posiciones.length > 1
+            ? `XML · ocurrencia ${idx + 1}/${posiciones.length}: ${termino}`
+            : `XML · ${termino}`;
+        mostrarToast(msg, 'info');
+        return true;
     }
 
     function irACodigoXml(terminos, cambiarPestaña = true) {
@@ -619,16 +691,19 @@
         if (cambiarPestaña) cambiarTab('codigo');
         const ta = $('#textareaXml');
         if (!ta.value.trim()) ta.value = xmlActual;
-        const pos = buscarPosicionEnXml(terminos);
-        if (!pos) {
-            mostrarToast(`No localizado en XML: ${(terminos[0] || terminos)}`, 'info');
+        const posiciones = buscarTodasPosicionesEnXml(terminos);
+        if (!posiciones.length) {
+            mostrarToast(`No localizado en XML: ${(Array.isArray(terminos) ? terminos[0] : terminos)}`, 'info');
             return false;
         }
+        const pos = posiciones[0];
         ta.focus();
         const fin = Math.min(pos.idx + pos.len, ta.value.length);
         ta.setSelectionRange(pos.idx, fin);
-        const lineas = ta.value.substring(0, pos.idx).split('\n').length;
-        ta.scrollTop = Math.max(0, (lineas - 4) * 16);
+        scrollTextareaASeleccion(ta);
+        if (posiciones.length > 1) {
+            mostrarToast(`XML · ${posiciones.length} ocurrencias (clic en un ID para recorrerlas)`, 'info');
+        }
         return true;
     }
 
@@ -662,16 +737,18 @@
             meta: { ...meta },
             anchors: anclasParaElemento(meta, tipo)
         };
+        xmlNavUltimoCampo = null;
+        xmlNavIndice = 0;
         $('#panelEditorCrud').classList.remove('hidden');
         $('#editorCrudTitulo').textContent = titulo;
-        $('#editorCrudAyuda').textContent = 'Modifique los valores, pulse Previsualizar para ver el formulario sin guardar, o Aplicar al XML para confirmar. Use «Ver en XML» para localizar el fragmento en el código.';
+        $('#editorCrudAyuda').textContent = 'Modifique los valores, pulse Previsualizar para ver el formulario sin guardar, o Aplicar al XML para confirmar. Clic en Bind ID, Control, etc. para saltar a esa ocurrencia en el XML (repita el clic para la siguiente).';
         renderizarFormularioEditor();
         if ($('#textareaXml').value.trim() || xmlActual) {
             irACodigoXml(editorCrudActivo.anchors, false);
         }
         actualizarBarraVolver();
         actualizarLayoutPanelIzquierdo();
-        mostrarToast('Editor abierto · «Ver en XML» para ir al código', 'info');
+        mostrarToast('Editor abierto · clic en Control/Bind para ir al XML', 'info');
     }
 
     function cerrarEditorCrud() {
@@ -685,10 +762,14 @@
         const cls = `mt-0.5 w-full border rounded-md px-2 py-1.5 text-xs outline-none focus:ring-1 ${opts.readonly ? 'bg-slate-100 text-slate-500 border-slate-200' : 'border-slate-300 focus:ring-orbeon-500'}`;
         const ro = opts.readonly ? 'readonly' : '';
         const tipo = opts.type || 'text';
+        const xmlNav = opts.xmlNav
+            ? ' data-xml-nav="1" title="Clic para ir a esta ocurrencia en el XML (repita para la siguiente)"'
+            : '';
+        const xmlCls = opts.xmlNav ? ' xml-nav-field' : '';
         return `<label class="block">
             <span class="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">${escaparHtml(label)}</span>
             <input id="${id}" type="${tipo}" data-campo="${opts.campo || id}" value="${escaparHtml(value ?? '')}"
-                   ${ro} class="${cls}">
+                   ${ro}${xmlNav} class="${cls}${xmlCls}">
         </label>`;
     }
 
@@ -699,23 +780,23 @@
 
         if (tipo === 'logo') {
             form.innerHTML = `
-                ${campoEditor('Tag imagen (instancia)', 'ed-imageTag', meta.imageTag || meta.tag, { readonly: true, campo: 'imageTag' })}
-                ${campoEditor('Control ID', 'ed-controlId', meta.controlId, { readonly: true, campo: 'controlId' })}
+                ${campoEditor('Tag imagen (instancia)', 'ed-imageTag', meta.imageTag || meta.tag, { readonly: true, campo: 'imageTag', xmlNav: true })}
+                ${campoEditor('Control ID', 'ed-controlId', meta.controlId, { readonly: true, campo: 'controlId', xmlNav: true })}
                 ${campoEditor('Sección', 'ed-sectionId', `${meta.sectionTitulo || ''} (${meta.sectionId || ''})`, { readonly: true })}
                 ${campoEditor('Ruta src', 'ed-src', meta.src || '', { campo: 'src' })}
                 ${campoEditor('Nombre archivo', 'ed-filename', meta.filename || '', { campo: 'filename' })}
                 ${campoEditor('Mediatype', 'ed-mediatype', meta.mediatype || 'image/png', { campo: 'mediatype' })}`;
         } else if (tipo === 'campo' || tipo === 'desplegable') {
             form.innerHTML = `
-                ${campoEditor('Field ID (fr-form-resources)', 'ed-fieldId', meta.fieldId || meta.resourceKey, { readonly: true, campo: 'fieldId' })}
-                ${campoEditor('Control ID', 'ed-controlId', meta.controlId || meta.id, { readonly: true })}
+                ${campoEditor('Field ID (fr-form-resources)', 'ed-fieldId', meta.fieldId || meta.resourceKey, { readonly: true, campo: 'fieldId', xmlNav: true })}
+                ${campoEditor('Control ID', 'ed-controlId', meta.controlId || meta.id, { readonly: true, campo: 'controlId', xmlNav: true })}
                 ${campoEditor('Label', 'ed-label', meta.label || '', { campo: 'label' })}
                 ${campoEditor('Hint', 'ed-hint', meta.hint || '', { campo: 'hint' })}
                 ${campoEditor('Alert', 'ed-alert', meta.alert || '', { campo: 'alert' })}`;
         } else if (tipo === 'seccion' || tipo === 'dependencia') {
             form.innerHTML = `
-                ${campoEditor('Sección ID', 'ed-sectionId', meta.sectionId || meta.id, { readonly: true, campo: 'sectionId' })}
-                ${campoEditor('Bind ID', 'ed-bindId', meta.bindId, { readonly: true, campo: 'bindId' })}
+                ${campoEditor('Sección ID', 'ed-sectionId', meta.sectionId || meta.id, { readonly: true, campo: 'sectionId', xmlNav: true })}
+                ${campoEditor('Bind ID', 'ed-bindId', meta.bindId, { readonly: true, campo: 'bindId', xmlNav: true })}
                 <label class="block">
                     <span class="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Expresión relevant (visibilidad)</span>
                     <textarea id="ed-relevant" data-campo="relevant" rows="3"
@@ -724,9 +805,9 @@
                 <p class="text-[10px] text-slate-400">Vacío = siempre visible (quitar relevant al aplicar si está vacío)</p>`;
         } else if (tipo === 'calculadora') {
             form.innerHTML = `
-                ${campoEditor('Bind ID', 'ed-bindId', meta.bindId, { readonly: true, campo: 'bindId' })}
-                ${campoEditor('Campo instancia (ref)', 'ed-ref', meta.ref || '', { readonly: true, campo: 'ref' })}
-                ${campoEditor('Control', 'ed-controlId', meta.controlId || '', { readonly: true, campo: 'controlId' })}
+                ${campoEditor('Bind ID', 'ed-bindId', meta.bindId, { readonly: true, campo: 'bindId', xmlNav: true })}
+                ${campoEditor('Campo instancia (ref)', 'ed-ref', meta.ref || '', { readonly: true, campo: 'ref', xmlNav: true })}
+                ${campoEditor('Control', 'ed-controlId', meta.controlId || '', { readonly: true, campo: 'controlId', xmlNav: true })}
                 <label class="block">
                     <span class="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Expresión calculate (XPath)</span>
                     <textarea id="ed-calculate" data-campo="calculate" rows="5"
@@ -1001,7 +1082,29 @@
         }
     });
     $('#editorCrudIrXml').addEventListener('click', () => {
-        if (editorCrudActivo) irACodigoXml(editorCrudActivo.anchors, true);
+        if (editorCrudActivo) {
+            xmlNavUltimoCampo = null;
+            xmlNavIndice = 0;
+            irACodigoXml(editorCrudActivo.anchors, true);
+        }
+    });
+    $('#editorCrudForm').addEventListener('click', (e) => {
+        const el = e.target.closest('[data-xml-nav]');
+        if (!el || el.tagName !== 'INPUT') return;
+        e.preventDefault();
+        const termino = el.value.trim();
+        if (!termino) return;
+        if (xmlNavUltimoCampo !== el) {
+            xmlNavUltimoCampo = el;
+            xmlNavIndice = 0;
+        } else {
+            xmlNavIndice += 1;
+        }
+        const ok = irACodigoXmlTermino(termino, xmlNavIndice, false);
+        if (!ok && xmlNavIndice > 0) {
+            xmlNavIndice = 0;
+            irACodigoXmlTermino(termino, 0, false);
+        }
     });
     $('#editorCrudPreview').addEventListener('click', () => previsualizarEditorCrud());
     $('#editorCrudAplicar').addEventListener('click', () => aplicarEditorCrud());

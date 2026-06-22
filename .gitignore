@@ -19,6 +19,7 @@ release.properties
 # Java
 *.class
 *.jar
+!/.tools/**/*.jar
 *.war
 *.ear
 hs_err_pid*
@@ -43,7 +44,7 @@ credentials.json
 .cursor/
 
 # Herramientas locales (Maven portable, etc.)
-.tools/
+
 
 # PDF generados o de prueba
 *.pdf
