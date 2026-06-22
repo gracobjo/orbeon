@@ -30,6 +30,7 @@ Ver carpeta [`docs/`](docs/README.md):
 | [HOWTO arranque y CRUD](docs/06-howto-arranque-y-crud.md) | Cómo arrancar y editar labels/hints/desplegables |
 | [Editor CRUD contextual](docs/08-editor-crud-contextual-y-preview.md) | Navegar desde resultados, preview antes de guardar |
 | [Dependencias de secciones](docs/07-dependencias-secciones.md) | Visibilidad condicional y CRUD de `relevant` |
+| [Calculadoras XForms](docs/09-calculadoras-xforms.md) | `xf:bind @calculate` en plantilla 684/480 |
 | [Desarrollador](docs/04-documentacion-desarrollador.md) | Arquitectura y API |
 | [APIs externas](docs/05-apis-externas.md) | Dependencias de red |
 

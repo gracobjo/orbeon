@@ -434,7 +434,7 @@ Modifica el nodo en **`fr-form-instance`**, no en resources.
 |-----------|-----------|------------------|
 | `update-text` | Cambiar texto HTML explicativo | `elementId`, `value` |
 | `hide-section` / `show-section` | Ocultar/mostrar sección | `sectionId` |
-| `update-bind` | Atributos XForms del bind | `bindId`, `attributes{}` |
+| `update-bind` | Atributos XForms del bind (`calculate`, `relevant`, `readonly`, …) | `bindId`, `attributes{}` |
 | `update-section-relevant` | Visibilidad condicional de sección/grid | `sectionId` o `bindId`, `relevant` o `removeRelevant` |
 | `remove-field` | Quitar control del view | `fieldId` (id del control) |
 | `add-field` | Añadir nodo en instancia | `sectionId`, `fieldName` |
@@ -443,6 +443,27 @@ Consulta el esquema completo:
 
 ```
 GET http://localhost:8080/api/formulario/esquema-modificaciones
+```
+
+### Calculadoras (`calculate`)
+
+Los campos calculados automáticamente (atributo `calculate` en `xf:bind`) no tienen pestaña propia en la UI. Para listarlos y editarlos:
+
+- Guía e inventario: **[09 — Calculadoras XForms](09-calculadoras-xforms.md)**
+- Edición JSON de ejemplo:
+
+```json
+{
+  "changes": [
+    {
+      "type": "update-bind",
+      "bindId": "provincializador-bind",
+      "attributes": {
+        "calculate": "$empresa-provincia"
+      }
+    }
+  ]
+}
 ```
 
 ---

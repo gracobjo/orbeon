@@ -41,3 +41,6 @@ credentials.json
 
 # Cursor
 .cursor/
+
+# Herramientas locales (Maven portable, etc.)
+.tools/

@@ -170,12 +170,13 @@ Alternativa genérica (mismo efecto):
 
 - El editor **analiza y modifica** el XML; no ejecuta XPath en tiempo real como Orbeon Form Runner.
 - La visibilidad de **campos individuales** (no sección completa) también usa `relevant` en binds hijos; la pestaña Dependencias lista secciones y grids con bind explícito.
-- Secciones con `relevant="false()"` pero campos activos por `calculate` (p. ej. persona física / autónomo) requieren editar los binds de campo vía **Modificar JSON** (`update-bind`).
+- Secciones con `relevant="false()"` pero campos activos por `calculate` (p. ej. persona física / autónomo) requieren editar los binds de campo vía **Modificar JSON** (`update-bind`). Ver [09 — Calculadoras XForms](09-calculadoras-xforms.md).
 
 ---
 
 ## Referencias
 
+- [09 — Calculadoras XForms](09-calculadoras-xforms.md)
 - [08 — Editor CRUD contextual y preview](08-editor-crud-contextual-y-preview.md)
 - [HOWTO arranque y CRUD](06-howto-arranque-y-crud.md)
 - [Documentación desarrollador — API](04-documentacion-desarrollador.md)

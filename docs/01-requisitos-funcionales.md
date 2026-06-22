@@ -128,3 +128,4 @@ El parseo reconoce, entre otros:
 | RF-L04 | No hay autenticación ni control de acceso multiusuario. |
 | RF-L05 | `yesno-input` y `appearance="full"` se renderizan de forma simplificada en vista diseño. |
 | RF-L06 | No se persiste el estado en base de datos; todo es en memoria del navegador/sesión HTTP. |
+| RF-L09 | No hay pestaña ni inventario UI de calculadoras (`xf:bind @calculate`); edición vía Código XML o `update-bind`. Ver [09-calculadoras-xforms.md](09-calculadoras-xforms.md). |

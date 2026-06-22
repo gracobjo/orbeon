@@ -14,6 +14,7 @@ Editor visual de plantillas XML de **Orbeon Form Runner** para lectura, edición
 | [06 — HOWTO arranque y CRUD](06-howto-arranque-y-crud.md) | Cómo arrancar el servidor y hacer CRUD (labels, hints, desplegables…) |
 | [07 — Dependencias de secciones](07-dependencias-secciones.md) | Visibilidad condicional (`relevant`), pestaña Dependencias y CRUD |
 | [08 — Editor CRUD contextual y preview](08-editor-crud-contextual-y-preview.md) | Clic en resultados → XML + CRUD + previsualizar antes de guardar |
+| [09 — Calculadoras XForms](09-calculadoras-xforms.md) | `xf:bind @calculate`: inventario, tipos y edición en plantilla 684/480 |
 | [Diagramas UML](diagramas/) | Fuentes PlantUML (casos de uso, clases, componentes, secuencia) |
 
 ## Stack tecnológico
