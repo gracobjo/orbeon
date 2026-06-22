@@ -44,3 +44,6 @@ credentials.json
 
 # Herramientas locales (Maven portable, etc.)
 .tools/
+
+# PDF generados o de prueba
+*.pdf
