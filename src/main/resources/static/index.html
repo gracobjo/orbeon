@@ -30,6 +30,51 @@
             outline: 2px solid #2563eb;
             outline-offset: 2px;
         }
+        /* Vista Código XML: altura fija con scroll interno (vh, no % flex) */
+        #panelCodigo {
+            flex: 1 1 0;
+            min-height: 0;
+            overflow: hidden;
+        }
+        .xml-editor-viewport {
+            flex: 0 0 auto;
+            height: 40vh;
+            max-height: 40vh;
+            min-height: 10rem;
+            overflow: hidden;
+        }
+        #textareaXml {
+            display: block;
+            width: 100%;
+            height: 100%;
+            max-height: 40vh;
+            overflow-y: scroll;
+            overflow-x: auto;
+            resize: none;
+            box-sizing: border-box;
+        }
+        #panelCodigo .xml-sync-bar {
+            flex: 0 0 auto;
+        }
+        /* CRUD abierto + pestaña Código: XML más bajo, editor ocupa el resto */
+        #panelIzquierdo.layout-xml-crud #panelCodigo {
+            flex: 0 0 auto;
+        }
+        #panelIzquierdo.layout-xml-crud .xml-editor-viewport,
+        #panelIzquierdo.layout-xml-crud #textareaXml {
+            height: 32vh;
+            max-height: 32vh;
+            min-height: 8rem;
+        }
+        #panelIzquierdo.layout-xml-crud #panelEditorCrud {
+            flex: 1 1 0;
+            min-height: 12rem;
+            max-height: none;
+        }
+        /* Solo pestaña Código (sin CRUD): no estirar el panel hasta el fondo */
+        #panelIzquierdo.layout-solo-codigo #panelCodigo {
+            flex: 0 0 auto;
+        }
         @keyframes nav-pulse {
             0%, 15% { outline-color: #2563eb; background-color: #eef6ff !important; }
             100% { outline-color: transparent; }
@@ -80,7 +125,7 @@
 <main class="flex-1 flex overflow-hidden p-4 gap-4">
 
     <!-- Panel izquierdo: edición -->
-    <section class="w-1/2 flex flex-col bg-white rounded-xl shadow border border-slate-200 overflow-hidden">
+    <section id="panelIzquierdo" class="w-1/2 flex flex-col bg-white rounded-xl shadow border border-slate-200 overflow-hidden min-h-0">
         <div class="sticky top-0 z-20 bg-white shrink-0 border-b border-slate-200">
             <nav class="flex overflow-x-auto">
             <button id="tabGuiado" class="flex-shrink-0 px-3 py-3 text-xs text-center tab-active transition">Lista</button>
@@ -246,10 +291,13 @@
         </div>
 
         <!-- Pestaña Vista Código XML -->
-        <div id="panelCodigo" class="flex-1 flex flex-col hidden">
-            <textarea id="textareaXml" spellcheck="false" placeholder="El código XML aparecerá aquí..."
-                      class="code-area flex-1 w-full p-4 bg-slate-900 text-emerald-300 text-xs leading-relaxed resize-none focus:outline-none"></textarea>
-            <div class="p-3 border-t border-slate-200 bg-slate-50">
+        <div id="panelCodigo" class="flex-1 flex flex-col hidden min-h-0 overflow-hidden">
+            <div id="xmlEditorViewport" class="xml-editor-viewport bg-slate-900 border-b border-slate-700">
+                <textarea id="textareaXml" spellcheck="false" placeholder="El código XML aparecerá aquí…"
+                          class="code-area w-full p-4 bg-slate-900 text-emerald-300 text-xs leading-relaxed focus:outline-none"
+                          title="Desplazar dentro de esta ventana para recorrer el XML"></textarea>
+            </div>
+            <div class="xml-sync-bar shrink-0 p-3 border-t border-slate-200 bg-slate-50">
                 <button id="btnSincronizar"
                         class="w-full py-2.5 bg-orbeon-500 hover:bg-orbeon-600 text-white rounded-lg text-sm font-medium transition">
                     Actualizar Vista de Diseño desde el Código
@@ -258,7 +306,7 @@
         </div>
 
         <!-- Panel CRUD contextual (logo, campo, sección) -->
-        <div id="panelEditorCrud" class="hidden shrink-0 border-t-2 border-orbeon-500 bg-white shadow-[0_-4px_12px_rgba(0,0,0,0.08)] flex flex-col max-h-[45%] min-h-0 z-10">
+        <div id="panelEditorCrud" class="hidden shrink-0 border-t-2 border-orbeon-500 bg-white shadow-[0_-4px_12px_rgba(0,0,0,0.08)] flex flex-col max-h-[45%] min-h-0 z-10 overflow-hidden">
             <div class="px-3 py-2 bg-orbeon-50 border-b border-orbeon-100 flex items-center gap-2 shrink-0">
                 <span class="text-[10px] px-1.5 py-0.5 rounded bg-orbeon-500 text-white shrink-0">CRUD</span>
                 <button type="button" id="editorCrudVolver" class="hidden shrink-0 inline-flex items-center gap-0.5 px-2 py-0.5 text-[10px] font-medium text-orbeon-700 border border-orbeon-300 bg-white hover:bg-orbeon-100 rounded" title="Volver a la lista anterior (Esc)">← Volver</button>
@@ -513,6 +561,13 @@
         btnCrud?.classList.toggle('hidden', !mostrar);
     }
 
+    function actualizarLayoutPanelIzquierdo() {
+        const crudAbierto = !$('#panelEditorCrud').classList.contains('hidden');
+        const enCodigo = tabIzqActiva === 'codigo';
+        $('#panelIzquierdo').classList.toggle('layout-xml-crud', crudAbierto && enCodigo);
+        $('#panelIzquierdo').classList.toggle('layout-solo-codigo', enCodigo && !crudAbierto);
+    }
+
     function volverAlOrigen() {
         if (!navegacionOrigen) return;
         const { tab, scrollTop, highlightKey, titulo } = navegacionOrigen;
@@ -521,6 +576,7 @@
         navegacionOrigen = null;
         cambiarTab(tab);
         actualizarBarraVolver();
+        actualizarLayoutPanelIzquierdo();
         requestAnimationFrame(() => {
             const el = contenedorScrollTab(tab);
             if (el) el.scrollTop = scrollTop;
@@ -614,6 +670,7 @@
             irACodigoXml(editorCrudActivo.anchors, false);
         }
         actualizarBarraVolver();
+        actualizarLayoutPanelIzquierdo();
         mostrarToast('Editor abierto · «Ver en XML» para ir al código', 'info');
     }
 
@@ -621,6 +678,7 @@
         $('#panelEditorCrud').classList.add('hidden');
         editorCrudActivo = null;
         actualizarBarraVolver();
+        actualizarLayoutPanelIzquierdo();
     }
 
     function campoEditor(label, id, value, opts = {}) {
@@ -998,6 +1056,7 @@
             document.getElementById(tabsIzq[k]).classList.toggle('text-slate-500', k !== tab);
         });
         actualizarBarraVolver();
+        actualizarLayoutPanelIzquierdo();
     }
 
     $('#buscarLista').addEventListener('input', (e) => { filtroLista = e.target.value.toLowerCase(); renderizarComponentes(); });

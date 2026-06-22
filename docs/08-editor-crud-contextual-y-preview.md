@@ -154,6 +154,7 @@ Los demás campos siguen en solo lectura (`preview-input` con `pointer-events: n
 - Los desplegables **dinámicos** (JCYL) se abren en el editor de label/hint, pero el CRUD de **opciones** sigue en el panel expandible del Asistente (no en el panel contextual).
 - La edición en pestaña **Lista** (sin panel CRUD) sigue siendo en memoria hasta **Exportar XML**; son flujos complementarios.
 - Hasta **Aplicar al XML**, el textarea **Código XML** no refleja el borrador de previsualización.
+- En pestaña **Código XML**, el editor ocupa la mitad superior con scroll propio; el botón «Actualizar Vista…» y el panel CRUD quedan visibles sin desplazar toda la página.
 
 ---
 
