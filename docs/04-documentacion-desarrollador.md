@@ -40,6 +40,7 @@ Parsear plantillas **Orbeon Form Runner** (XHTML + XForms + extensiones `fr:`) p
  OrbeonCompareService   OrbeonPdfService
  OrbeonLogoService   OrbeonNaturalLanguageService
  OrbeonDependencyService   OrbeonCalculatorService
+ OrbeonInstanceService
                            │
      ┌─────────────────────┴─────────────────────┐
      ▼                     ▼                     ▼
@@ -55,6 +56,7 @@ Diagrama detallado: [diagramas/arquitectura-componentes.puml](diagramas/arquitec
 ```
 orbeon/
 ├── pom.xml
+├── arrancar.cmd                   ← Arranque Windows (Maven en .tools)
 ├── docs/                          ← Esta documentación
 ├── 684_F1b_MIXTO_480_Solicitud_PRE.txt
 ├── 684_F1b_MIXTO_480_Solicitud_v39.txt
@@ -68,9 +70,11 @@ orbeon/
     │   │   │   └── GlobalExceptionHandler.java
     │   │   ├── dto/               ← Objetos de transferencia API
     │   │   ├── model/             ← Entidades de dominio
-    │   │   ├── service/           ← Lógica de negocio
+    │   │   ├── service/           ← Lógica de negocio (incl. OrbeonInstanceService)
     │   │   └── util/              ← Parseo XML y recursos
-    │   └── resources/static/
+    │   └── resources/
+    │       ├── datos/             ← Presets de instancia (instrucciones-684)
+    │       └── static/
     │       └── index.html         ← UI principal
     └── test/
         └── java/.../
@@ -188,9 +192,35 @@ Compara dos listas de componentes indexadas por `id`. Estados: `ANADIDO`, `ELIMI
 
 ### 4.8 `OrbeonPdfService`
 
-Genera PDF con OpenPDF. Respeta `class="noprintinpdf"`. Agrupa por secciones. **No** invoca Orbeon Server.
+Genera PDF al **estilo impreso JCYL / Orbeon Form Runner** (referencia: `684 F1b Mixto - 480 Solicitud_Instrucciones.pdf`):
 
-### 4.9 `OrbeonLogoService`
+- Recorre `fr:section` y **rejillas** `fr:grid` / `fr:c` (12 columnas).
+- Cabeceras de sección en mayúsculas con barra gris.
+- Campos como **etiqueta + valor** leyendo `fr-form-instance`.
+- Mapa **`etiquetas`** para mostrar provincia/municipio legibles en desplegables.
+- No muestra hints `Formato:` como valores; omite IDs internos en declaraciones (solo texto `fr:explanation`).
+- Desplegables: etiqueta de la opción seleccionada; `appearance="full"` como opciones marcadas.
+- Excluye `noprintinpdf`, `Adme-section`, `verFirma-section` y evalúa `relevant` (`=`, `!=`, `and`, `or`, `xxf:non-blank`, `xxf:valid`).
+- Paginación **N / total** en pie de página.
+
+**Firma:** `generarPdf(xml, modificaciones)` y `generarPdf(xml, modificaciones, etiquetas)`.
+
+**No** invoca Orbeon Server ni incrusta logos binarios.
+
+### 4.9 `OrbeonInstanceService`
+
+Cumplimenta nodos hoja de `fr-form-instance` y recalcula campos derivados para coherencia con el PDF.
+
+| Método | Descripción |
+|--------|-------------|
+| `aplicarPreset(xml, preset)` | Carga `classpath:datos/instancia-ejemplo-{preset}.json` |
+| `aplicarValores(xml, valores, etiquetas)` | Aplica mapa de valores y devuelve `ResultadoCumplimentacion` |
+
+**Derivados automáticos:** `documentoIdent-tipodoc`, `tipoSolicitante`, `provincializador`, `centroGestor`, `centroDirectivo.*` según NIF y provincia.
+
+**Preset incluido:** `instrucciones-684` — Ayuntamiento de El Barco de Ávila (`P0502100A`).
+
+### 4.10 `OrbeonLogoService`
 
 Detecta logos/imágenes (`fr:image`, adjuntos en instancia) y calcula **posición global**, **posición en sección**, `controlId`, `sectionId`, `filename`, `src`.
 
@@ -199,7 +229,7 @@ Detecta logos/imágenes (`fr:image`, adjuntos en instancia) y calcula **posició
 | `analizarLogos(xml)` | `List<LogoEnFormulario>` |
 | `describirLogos(xml)` | Texto legible para el asistente NL |
 
-### 4.10 `OrbeonNaturalLanguageService`
+### 4.11 `OrbeonNaturalLanguageService`
 
 Parser de **reglas en español** (sin LLM). Traduce instrucciones a `changes[]` o consultas.
 
@@ -232,6 +262,7 @@ Diagrama: [diagramas/clases-dominio.puml](diagramas/clases-dominio.puml)
 | `LogoEnFormulario` | posicionGlobal, posicionEnSeccion, tag, controlId, sectionId, src, … |
 | `CalculadoraFormulario` | bindId, ref, label, controlId, calculate, tipo, fuentes[] |
 | `AnalisisCalculadoras` | total, calculadoras[], glosarioFuentes{} |
+| `ResultadoCumplimentacion` | xml, etiquetas{}, camposAplicados |
 
 **Metadatos relevantes en `ComponenteFormulario`:**
 
@@ -279,10 +310,30 @@ Diagrama: [diagramas/clases-dominio.puml](diagramas/clases-dominio.puml)
 ### POST `/vista-pdf`
 
 ```json
-{ "xml": "...", "componentes": [] }
+{
+  "xml": "...",
+  "componentes": [],
+  "cumplimentarEjemplo": false,
+  "presetInstancia": "instrucciones-684",
+  "etiquetas": { "empresa-provincia": "Ávila" }
+}
 ```
 
 - **Respuesta:** `application/pdf` (binario)
+- Si `cumplimentarEjemplo: true`, aplica el preset antes de generar.
+
+### POST `/cumplimentar-instancia`
+
+```json
+{
+  "xml": "...",
+  "preset": "instrucciones-684",
+  "valores": { "documentoIdent-nifSol": "P0502100A" },
+  "etiquetas": {}
+}
+```
+
+- **Respuesta:** `FormularioResponse` completo (xml, componentes, estructura, dependencias, calculadoras).
 
 ### POST `/comparar`
 
@@ -409,8 +460,8 @@ Guía de usuario: [08-editor-crud-contextual-y-preview.md](08-editor-crud-contex
 
 | Vista | Función |
 |-------|---------|
-| Vista Diseño | Render HTML por tipo de control; banner ámbar si hay preview borrador |
-| Vista PDF | iframe con blob PDF |
+| Vista Diseño | Render HTML por tipo de control; desplegables estáticos **explorables** (`preview-select`); banner ámbar si hay preview borrador |
+| Vista PDF | iframe con blob PDF; botones **Cumplimentar ejemplo**, Actualizar, Descargar |
 
 ---
 
@@ -436,14 +487,18 @@ Guía de usuario: [08-editor-crud-contextual-y-preview.md](08-editor-crud-contex
 ### Comandos
 
 ```bash
+# Windows: arrancar.cmd (Maven en .tools)
+
 # Compilar y ejecutar
 mvn spring-boot:run
 
 # Tests
 mvn test
 
-# Test específico desplegables
+# Test específico desplegables / instancia / PDF
 mvn test -Dtest=SelectItemsVerificationTest
+mvn test -Dtest=OrbeonInstanceServiceTest
+mvn test -Dtest=OrbeonPdfServiceTest
 
 # JAR ejecutable
 mvn package
@@ -483,6 +538,8 @@ taskkill /PID <pid> /F
 |------|-----------|
 | `SelectItemsVerificationTest` | Desplegables PRE y v39: opciones estáticas y dinámicos |
 | `NaturalLanguageServiceTest` | Logos, consultas NL, CRUD opciones desplegable |
+| `OrbeonInstanceServiceTest` | Preset instrucciones-684 aplica NIF y CIF |
+| `OrbeonPdfServiceTest` | Generación PDF vacío y cumplimentado multipágina |
 
 ---
 

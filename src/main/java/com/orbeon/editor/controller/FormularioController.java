@@ -3,6 +3,7 @@ package com.orbeon.editor.controller;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.orbeon.editor.dto.CumplimentarInstanciaRequest;
 import com.orbeon.editor.dto.ComparacionResponse;
 import com.orbeon.editor.dto.FormularioResponse;
 import com.orbeon.editor.dto.ModificacionRequest;
@@ -15,7 +16,9 @@ import com.orbeon.editor.model.ComponenteFormulario;
 import com.orbeon.editor.model.LogoEnFormulario;
 import com.orbeon.editor.model.AnalisisCalculadoras;
 import com.orbeon.editor.model.AnalisisDependencias;
+import com.orbeon.editor.model.ResultadoCumplimentacion;
 import com.orbeon.editor.service.OrbeonCalculatorService;
+import com.orbeon.editor.service.OrbeonInstanceService;
 import com.orbeon.editor.service.OrbeonCompareService;
 import com.orbeon.editor.service.OrbeonDependencyService;
 import com.orbeon.editor.service.OrbeonFormService;
@@ -38,6 +41,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -55,6 +59,7 @@ public class FormularioController {
     private final OrbeonLogoService logoService;
     private final OrbeonDependencyService dependencyService;
     private final OrbeonCalculatorService calculatorService;
+    private final OrbeonInstanceService instanceService;
     private final ObjectMapper objectMapper;
 
     public FormularioController(OrbeonFormService orbeonFormService,
@@ -66,6 +71,7 @@ public class FormularioController {
                                 OrbeonLogoService logoService,
                                 OrbeonDependencyService dependencyService,
                                 OrbeonCalculatorService calculatorService,
+                                OrbeonInstanceService instanceService,
                                 ObjectMapper objectMapper) {
         this.orbeonFormService = orbeonFormService;
         this.orbeonStructureService = orbeonStructureService;
@@ -76,6 +82,7 @@ public class FormularioController {
         this.logoService = logoService;
         this.dependencyService = dependencyService;
         this.calculatorService = calculatorService;
+        this.instanceService = instanceService;
         this.objectMapper = objectMapper;
     }
 
@@ -157,7 +164,16 @@ public class FormularioController {
             List<ComponenteFormulario> mods = request.getComponentes() != null
                     ? request.getComponentes()
                     : Collections.emptyList();
-            byte[] pdf = orbeonPdfService.generarPdf(request.getXml(), mods);
+            String xmlPdf = request.getXml();
+            Map<String, String> etiquetas = request.getEtiquetas() != null ? request.getEtiquetas() : Map.of();
+            if (request.isCumplimentarEjemplo()) {
+                String preset = request.getPresetInstancia() != null && !request.getPresetInstancia().isBlank()
+                        ? request.getPresetInstancia() : "instrucciones-684";
+                ResultadoCumplimentacion cumpl = instanceService.aplicarPreset(xmlPdf, preset);
+                xmlPdf = cumpl.getXml();
+                etiquetas = cumpl.getEtiquetas();
+            }
+            byte[] pdf = orbeonPdfService.generarPdf(xmlPdf, mods, etiquetas);
 
             return ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_DISPOSITION,
@@ -246,6 +262,35 @@ public class FormularioController {
             throw new IllegalArgumentException("El campo 'xml' es obligatorio");
         }
         return calculatorService.analizar(request.getXml());
+    }
+
+    @PostMapping(value = "/cumplimentar-instancia", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public FormularioResponse cumplimentarInstancia(@RequestBody CumplimentarInstanciaRequest request) {
+        if (request.getXml() == null || request.getXml().isBlank()) {
+            throw new IllegalArgumentException("El campo 'xml' es obligatorio");
+        }
+        ResultadoCumplimentacion resultado;
+        if (request.getPreset() != null && !request.getPreset().isBlank()) {
+            resultado = instanceService.aplicarPreset(request.getXml(), request.getPreset());
+            if (request.getValores() != null && !request.getValores().isEmpty()) {
+                resultado = instanceService.aplicarValores(
+                        resultado.getXml(), request.getValores(), mergeEtiquetas(resultado, request));
+            }
+        } else if (request.getValores() != null && !request.getValores().isEmpty()) {
+            resultado = instanceService.aplicarValores(
+                    request.getXml(), request.getValores(), request.getEtiquetas());
+        } else {
+            throw new IllegalArgumentException("Indique 'preset' o 'valores' para cumplimentar la instancia");
+        }
+        return construirRespuesta(resultado.getXml());
+    }
+
+    private Map<String, String> mergeEtiquetas(ResultadoCumplimentacion base, CumplimentarInstanciaRequest request) {
+        Map<String, String> merged = new LinkedHashMap<>(base.getEtiquetas());
+        if (request.getEtiquetas() != null) {
+            merged.putAll(request.getEtiquetas());
+        }
+        return merged;
     }
 
     @PostMapping(value = "/analizar-logos", consumes = MediaType.APPLICATION_JSON_VALUE)

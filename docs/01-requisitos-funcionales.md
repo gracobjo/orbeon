@@ -27,10 +27,12 @@
 | RF-011 | El sistema debe mostrar la estructura jerárquica por secciones (`fr:section`) con sus campos anidados. | Alta | Implementado |
 | RF-012 | El usuario debe poder buscar y filtrar componentes por id, label o tipo en lista y secciones. | Media | Implementado |
 | RF-013 | El sistema debe renderizar una vista previa de diseño aproximada del formulario (campos, desplegables, imágenes, textos). | Alta | Implementado |
-| RF-014 | Los desplegables (`select1`, `select`) deben mostrar opciones resueltas desde `xf:itemset ref="$form-resources/.../item"`. | Alta | Implementado |
+| RF-014 | Los desplegables (`select1`, `select`) deben mostrar opciones resueltas desde `xf:itemset ref="$form-resources/.../item"` y ser **explorables** en Vista Diseño (desplegable abierto, no bloqueado). | Alta | Implementado |
 | RF-015 | Los desplegables dinámicos (`fr:databound-select1`) deben identificarse y mostrarse como «opciones dinámicas» con referencia al servicio REST. | Alta | Implementado |
 | RF-016 | Las imágenes y adjuntos deben mostrar metadatos (`ref`, ruta de instancia) en la vista diseño. | Media | Implementado |
-| RF-017 | El sistema debe generar una vista previa PDF del formulario respetando nodos con `class="noprintinpdf"`. | Media | Implementado (mock) |
+| RF-017 | El sistema debe generar una vista previa PDF del formulario respetando nodos con `class="noprintinpdf"`, rejillas de 12 columnas, datos de `fr-form-instance` y evaluación básica de `relevant`. | Media | Implementado |
+| RF-018 | El usuario debe poder cumplimentar `fr-form-instance` con un preset de ejemplo (684 Instrucciones) desde la UI o la API. | Alta | Implementado |
+| RF-019 | La vista PDF debe aceptar etiquetas legibles para desplegables (provincia/municipio) y opción de aplicar preset antes de generar. | Media | Implementado |
 
 ---
 
@@ -116,12 +118,13 @@ Guía de usuario: [09-calculadoras-xforms.md](09-calculadoras-xforms.md).
 | RF-040 | `POST /api/formulario/cargar` — carga multipart y devuelve `{ xml, componentes, estructura, dependencias, calculadoras }`. | Alta | Implementado |
 | RF-041 | `POST /api/formulario/sincronizar-codigo` — reparsea XML desde JSON (incluye dependencias y calculadoras). | Media | Implementado |
 | RF-042 | `POST /api/formulario/exportar` — genera XML con modificaciones opcionales. | Alta | Implementado |
-| RF-043 | `POST /api/formulario/vista-pdf` — genera PDF en binario. | Media | Implementado |
+| RF-043 | `POST /api/formulario/vista-pdf` — genera PDF; admite `cumplimentarEjemplo`, `presetInstancia` y `etiquetas`. | Media | Implementado |
 | RF-044 | `POST /api/formulario/comparar` — compara dos archivos multipart. | Alta | Implementado |
 | RF-045 | `POST /api/formulario/modificar` — aplica `changes[]` y devuelve XML + log. | Alta | Implementado |
 | RF-046 | `POST /api/formulario/lenguaje-natural` — procesa instrucción en español. | Alta | Implementado |
 | RF-047 | `POST /api/formulario/analizar-logos` — inventario de logos con posición. | Media | Implementado |
 | RF-048 | `POST /api/formulario/analizar-calculadoras` — inventario de `xf:bind @calculate` con fuentes de datos. | Media | Implementado |
+| RF-049 | `POST /api/formulario/cumplimentar-instancia` — aplica preset o valores a `fr-form-instance` y devuelve XML reparseado. | Alta | Implementado |
 
 ---
 

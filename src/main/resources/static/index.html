@@ -20,16 +20,26 @@
         .tab-active { border-bottom: 2px solid #2563eb; color: #2563eb; font-weight: 600; }
         .code-area { font-family: 'Consolas', 'Monaco', 'Courier New', monospace; tab-size: 2; }
         .preview-input { pointer-events: none; }
+        .preview-select { pointer-events: auto; cursor: pointer; }
         #visorPdf { background: #525659; }
         .clickable-result { cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; }
         .clickable-result:hover { border-color: #2563eb; box-shadow: 0 0 0 1px #2563eb33; }
         #textareaXml::selection { background: #fbbf24; color: #1e293b; }
+        .nav-highlight {
+            animation: nav-pulse 2.2s ease-out;
+            outline: 2px solid #2563eb;
+            outline-offset: 2px;
+        }
+        @keyframes nav-pulse {
+            0%, 15% { outline-color: #2563eb; background-color: #eef6ff !important; }
+            100% { outline-color: transparent; }
+        }
     </style>
 </head>
 <body class="bg-slate-100 min-h-screen flex flex-col">
 
 <!-- Barra de herramientas superior -->
-<header class="bg-white border-b border-slate-200 shadow-sm px-6 py-3 flex flex-wrap items-center gap-3">
+<header class="sticky top-0 z-50 bg-white border-b border-slate-200 shadow-sm px-6 py-3 flex flex-wrap items-center gap-3">
     <div class="flex items-center gap-2 mr-4">
         <div class="w-8 h-8 rounded-lg bg-orbeon-500 flex items-center justify-center text-white font-bold text-sm">O</div>
         <h1 class="text-lg font-semibold text-slate-800">Editor Orbeon Form Runner</h1>
@@ -71,7 +81,8 @@
 
     <!-- Panel izquierdo: edición -->
     <section class="w-1/2 flex flex-col bg-white rounded-xl shadow border border-slate-200 overflow-hidden">
-        <nav class="flex border-b border-slate-200 overflow-x-auto">
+        <div class="sticky top-0 z-20 bg-white shrink-0 border-b border-slate-200">
+            <nav class="flex overflow-x-auto">
             <button id="tabGuiado" class="flex-shrink-0 px-3 py-3 text-xs text-center tab-active transition">Lista</button>
             <button id="tabAsistente" class="flex-shrink-0 px-3 py-3 text-xs text-center text-slate-500 hover:text-slate-700 transition">Asistente</button>
             <button id="tabSecciones" class="flex-shrink-0 px-3 py-3 text-xs text-center text-slate-500 hover:text-slate-700 transition">Secciones</button>
@@ -80,7 +91,15 @@
             <button id="tabModificar" class="flex-shrink-0 px-3 py-3 text-xs text-center text-slate-500 hover:text-slate-700 transition">Modificar JSON</button>
             <button id="tabChangelog" class="flex-shrink-0 px-3 py-3 text-xs text-center text-slate-500 hover:text-slate-700 transition">Cambios <span id="cntChangelog" class="ml-1 bg-slate-200 px-1 rounded text-[10px]">0</span></button>
             <button id="tabCodigo" class="flex-shrink-0 px-3 py-3 text-xs text-center text-slate-500 hover:text-slate-700 transition">Código XML</button>
-        </nav>
+            </nav>
+            <div id="barraVolverOrigen" class="hidden px-3 py-1.5 bg-orbeon-50 border-t border-orbeon-100 flex items-center gap-2">
+                <button type="button" id="btnVolverOrigen" class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-orbeon-700 hover:bg-orbeon-100 rounded-md transition shrink-0" title="Volver a la pestaña anterior (Esc)">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                    <span id="barraVolverTexto">Volver</span>
+                </button>
+                <span id="barraVolverDetalle" class="text-[10px] text-slate-500 truncate"></span>
+            </div>
+        </div>
 
         <!-- Pestaña Lista plana -->
         <div id="panelGuiado" class="flex-1 flex flex-col overflow-hidden">
@@ -242,6 +261,7 @@
         <div id="panelEditorCrud" class="hidden shrink-0 border-t-2 border-orbeon-500 bg-white shadow-[0_-4px_12px_rgba(0,0,0,0.08)] flex flex-col max-h-[45%] min-h-0 z-10">
             <div class="px-3 py-2 bg-orbeon-50 border-b border-orbeon-100 flex items-center gap-2 shrink-0">
                 <span class="text-[10px] px-1.5 py-0.5 rounded bg-orbeon-500 text-white shrink-0">CRUD</span>
+                <button type="button" id="editorCrudVolver" class="hidden shrink-0 inline-flex items-center gap-0.5 px-2 py-0.5 text-[10px] font-medium text-orbeon-700 border border-orbeon-300 bg-white hover:bg-orbeon-100 rounded" title="Volver a la lista anterior (Esc)">← Volver</button>
                 <span id="editorCrudTitulo" class="text-xs font-semibold text-slate-800 truncate flex-1">Editando elemento</span>
                 <button type="button" id="editorCrudCerrar" class="text-slate-400 hover:text-slate-700 text-sm leading-none px-1" title="Cerrar">✕</button>
             </div>
@@ -288,8 +308,13 @@
         <!-- Visor PDF embebido -->
         <div id="panelPdf" class="flex-1 flex flex-col hidden overflow-hidden">
             <div class="px-4 py-2 border-b border-slate-100 flex items-center justify-between gap-2">
-                <p class="text-xs text-slate-400">PDF generado desde el XML (reglas Orbeon: excluye <code class="text-slate-500">noprintinpdf</code>)</p>
+                <p class="text-xs text-slate-400">Impreso al estilo formulario JCYL (rejillas, secciones y datos de instancia; excluye <code class="text-slate-500">noprintinpdf</code>)</p>
                 <div class="flex gap-2">
+                    <button id="btnCumplimentarEjemplo" disabled
+                            class="px-3 py-1 text-xs bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white rounded-md transition"
+                            title="Rellena fr-form-instance con el ejemplo del PDF Instrucciones 684">
+                        Cumplimentar ejemplo
+                    </button>
                     <button id="btnRefrescarPdf" disabled
                             class="px-3 py-1 text-xs bg-orbeon-500 hover:bg-orbeon-600 disabled:opacity-40 text-white rounded-md transition">
                         Actualizar PDF
@@ -411,6 +436,104 @@
     let previewBorradorActivo = false;
     let snapshotAntesPreview = null;
     let ultimosLogosConsulta = [];
+    let tabIzqActiva = 'guiado';
+    let navegacionOrigen = null;
+
+    const NOMBRES_TAB = {
+        guiado: 'Lista', asistente: 'Asistente', secciones: 'Secciones',
+        dependencias: 'Dependencias', calculadoras: 'Calculadoras',
+        modificar: 'Modificar JSON', changelog: 'Cambios', codigo: 'Código XML'
+    };
+
+    function contenedorScrollTab(tab) {
+        const map = {
+            guiado: '#panelGuiado .overflow-y-auto',
+            asistente: '#asistenteHistorial',
+            secciones: '#listaSecciones',
+            dependencias: '#listaDependencias',
+            calculadoras: '#listaCalculadoras'
+        };
+        const sel = map[tab];
+        return sel ? document.querySelector(sel) : null;
+    }
+
+    function guardarOrigenNavegacion(meta) {
+        const tab = tabIzqActiva;
+        if (tab === 'codigo' || tab === 'modificar' || tab === 'changelog') {
+            if (!navegacionOrigen) return;
+            return;
+        }
+        const el = contenedorScrollTab(tab);
+        navegacionOrigen = {
+            tab,
+            scrollTop: el?.scrollTop ?? 0,
+            highlightKey: meta.highlightKey || null,
+            titulo: meta.titulo || ''
+        };
+        actualizarBarraVolver();
+    }
+
+    function buscarElementoHighlight(tab, key) {
+        if (!key) return null;
+        const esc = (s) => s.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+        const k = esc(key);
+        const roots = {
+            guiado: '#listaComponentes',
+            secciones: '#listaSecciones',
+            dependencias: '#listaDependencias',
+            calculadoras: '#listaCalculadoras'
+        };
+        const root = document.querySelector(roots[tab]);
+        if (!root) return null;
+        const sels = {
+            guiado: `[data-nav-id="${k}"]`,
+            secciones: `[data-comp-id="${k}"], [data-section-id="${k}"]`,
+            dependencias: `[data-dep-id="${k}"]`,
+            calculadoras: `[data-calc-bind="${k}"]`
+        };
+        const sel = sels[tab];
+        return sel ? root.querySelector(sel) : null;
+    }
+
+    function actualizarBarraVolver() {
+        const bar = $('#barraVolverOrigen');
+        const btnCrud = $('#editorCrudVolver');
+        if (!navegacionOrigen) {
+            bar?.classList.add('hidden');
+            btnCrud?.classList.add('hidden');
+            return;
+        }
+        const nombre = NOMBRES_TAB[navegacionOrigen.tab] || navegacionOrigen.tab;
+        $('#barraVolverTexto').textContent = `Volver a ${nombre}`;
+        $('#barraVolverDetalle').textContent = navegacionOrigen.titulo
+            ? `· ${navegacionOrigen.titulo}` : '';
+        const fueraDeOrigen = tabIzqActiva !== navegacionOrigen.tab;
+        const mostrar = fueraDeOrigen || !!editorCrudActivo;
+        bar?.classList.toggle('hidden', !mostrar);
+        btnCrud?.classList.toggle('hidden', !mostrar);
+    }
+
+    function volverAlOrigen() {
+        if (!navegacionOrigen) return;
+        const { tab, scrollTop, highlightKey, titulo } = navegacionOrigen;
+        $('#panelEditorCrud').classList.add('hidden');
+        editorCrudActivo = null;
+        navegacionOrigen = null;
+        cambiarTab(tab);
+        actualizarBarraVolver();
+        requestAnimationFrame(() => {
+            const el = contenedorScrollTab(tab);
+            if (el) el.scrollTop = scrollTop;
+            const target = buscarElementoHighlight(tab, highlightKey);
+            if (target) {
+                target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                target.classList.add('nav-highlight');
+                setTimeout(() => target.classList.remove('nav-highlight'), 2500);
+            }
+        });
+        const nombre = NOMBRES_TAB[tab] || tab;
+        mostrarToast(titulo ? `De vuelta en ${nombre}: ${titulo}` : `De vuelta en ${nombre}`, 'ok');
+    }
 
     /* --- Navegación XML + editor CRUD contextual --- */
     function buscarPosicionEnXml(terminos) {
@@ -472,24 +595,32 @@
     }
 
     function abrirEditorCrud(tipo, meta) {
+        const titulo = meta.titulo || meta.label || meta.sectionTitulo || meta.id
+            || meta.fieldId || meta.imageTag || meta.sectionId || tipo;
+        guardarOrigenNavegacion({
+            highlightKey: meta.bindId || meta.fieldId || meta.sectionId || meta.imageTag || meta.id,
+            titulo
+        });
         editorCrudActivo = {
             tipo,
             meta: { ...meta },
             anchors: anclasParaElemento(meta, tipo)
         };
-        const titulo = meta.titulo || meta.label || meta.sectionTitulo || meta.id
-            || meta.fieldId || meta.imageTag || meta.sectionId || tipo;
         $('#panelEditorCrud').classList.remove('hidden');
         $('#editorCrudTitulo').textContent = titulo;
-        $('#editorCrudAyuda').textContent = 'Modifique los valores, pulse Previsualizar para ver el formulario sin guardar, o Aplicar al XML para confirmar.';
+        $('#editorCrudAyuda').textContent = 'Modifique los valores, pulse Previsualizar para ver el formulario sin guardar, o Aplicar al XML para confirmar. Use «Ver en XML» para localizar el fragmento en el código.';
         renderizarFormularioEditor();
-        irACodigoXml(editorCrudActivo.anchors, true);
-        mostrarToast(`Editor abierto · XML localizado`, 'info');
+        if ($('#textareaXml').value.trim() || xmlActual) {
+            irACodigoXml(editorCrudActivo.anchors, false);
+        }
+        actualizarBarraVolver();
+        mostrarToast('Editor abierto · «Ver en XML» para ir al código', 'info');
     }
 
     function cerrarEditorCrud() {
         $('#panelEditorCrud').classList.add('hidden');
         editorCrudActivo = null;
+        actualizarBarraVolver();
     }
 
     function campoEditor(label, id, value, opts = {}) {
@@ -803,6 +934,14 @@
     }
 
     $('#editorCrudCerrar').addEventListener('click', cerrarEditorCrud);
+    $('#editorCrudVolver').addEventListener('click', volverAlOrigen);
+    $('#btnVolverOrigen').addEventListener('click', volverAlOrigen);
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && navegacionOrigen && (editorCrudActivo || tabIzqActiva === 'codigo')) {
+            e.preventDefault();
+            volverAlOrigen();
+        }
+    });
     $('#editorCrudIrXml').addEventListener('click', () => {
         if (editorCrudActivo) irACodigoXml(editorCrudActivo.anchors, true);
     });
@@ -833,6 +972,7 @@
 
     function habilitarExportacion(habilitar) {
         $('#btnExportar').disabled = !habilitar;
+        $('#btnCumplimentarEjemplo').disabled = !habilitar;
         $('#btnRefrescarPdf').disabled = !habilitar;
         $('#btnDescargarPdf').disabled = !habilitar;
         const label = $('#labelComparar');
@@ -850,12 +990,14 @@
     });
 
     function cambiarTab(tab) {
+        tabIzqActiva = tab;
         const paneles = { guiado: 'panelGuiado', asistente: 'panelAsistente', secciones: 'panelSecciones', dependencias: 'panelDependencias', calculadoras: 'panelCalculadoras', modificar: 'panelModificar', changelog: 'panelChangelog', codigo: 'panelCodigo' };
         Object.entries(paneles).forEach(([k, id]) => {
             document.getElementById(id).classList.toggle('hidden', k !== tab);
             document.getElementById(tabsIzq[k]).classList.toggle('tab-active', k === tab);
             document.getElementById(tabsIzq[k]).classList.toggle('text-slate-500', k !== tab);
         });
+        actualizarBarraVolver();
     }
 
     $('#buscarLista').addEventListener('input', (e) => { filtroLista = e.target.value.toLowerCase(); renderizarComponentes(); });
@@ -902,6 +1044,7 @@
             const esImagen = comp.tipo === 'image' || comp.tipo === 'static-attachment' || comp.tipo === 'image-attachment';
             const tarjeta = document.createElement('div');
             tarjeta.className = 'border border-slate-200 rounded-lg p-4 hover:border-orbeon-500/40 transition bg-slate-50/50 clickable-result';
+            tarjeta.dataset.navId = comp.id;
             tarjeta.title = 'Clic para editar en CRUD y ver XML';
             tarjeta.innerHTML = `
                 <div class="flex items-center justify-between mb-3">
@@ -1110,6 +1253,41 @@
         }, 900);
     }
 
+    /* --- Cumplimentar instancia de ejemplo --- */
+    async function cumplimentarEjemploInstrucciones() {
+        const xml = $('#textareaXml').value || xmlActual;
+        if (!xml.trim()) return;
+
+        $('#btnCumplimentarEjemplo').disabled = true;
+        try {
+            const res = await fetch(`${API}/cumplimentar-instancia`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ xml, preset: 'instrucciones-684' })
+            });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                let msg = err.error || res.statusText;
+                if (res.status === 404) {
+                    msg = 'Endpoint no disponible (404). Reinicia la app con arrancar.cmd para cargar la ultima version.';
+                }
+                throw new Error(msg);
+            }
+            const data = await res.json();
+            procesarRespuesta(data, false);
+            mostrarToast('Instancia cumplimentada con ejemplo 684 Instrucciones', 'ok');
+            if (!tabPreviewActiva) {
+                await generarVistaPdf();
+            }
+        } catch (err) {
+            mostrarToast('Error al cumplimentar: ' + err.message, 'error');
+        } finally {
+            $('#btnCumplimentarEjemplo').disabled = false;
+        }
+    }
+
+    $('#btnCumplimentarEjemplo').addEventListener('click', () => cumplimentarEjemploInstrucciones());
+
     /* --- Generación y visualización PDF --- */
     async function generarVistaPdf() {
         const xml = $('#textareaXml').value || xmlActual;
@@ -1165,6 +1343,26 @@
             a.click();
         }
     });
+
+    function stripHtmlPreview(texto) {
+        return (texto || '')
+            .replace(/&#xA;/g, '\n')
+            .replace(/<br\s*\/?>/gi, ' ')
+            .replace(/<[^>]+>/g, '')
+            .replace(/&nbsp;/g, ' ')
+            .trim();
+    }
+
+    function htmlOpcionesSelect(items) {
+        if (!items?.length) {
+            return '<option value="" disabled>— Sin opciones en recursos —</option>';
+        }
+        return items.map(it => {
+            const val = escaparHtml(it.value || '');
+            const lab = escaparHtml(stripHtmlPreview(it.label || it.value || ''));
+            return `<option value="${val}">${lab}</option>`;
+        }).join('');
+    }
 
     /* --- Renderizado mock WYSIWYG --- */
     function renderizarPreview(listaComp = null) {
@@ -1222,7 +1420,8 @@
                     ${comp.hint ? `<p class="text-xs text-amber-600 mt-1 ml-6">💡 Pista: ${escaparHtml(comp.hint)}</p>` : ''}`;
             } else if (comp.tipo === 'select1' || comp.tipo === 'select' || comp.tipo === 'databound-select1') {
                 const items = comp.items || [];
-                const esDinamico = comp.metadatos?.itemsetDinamico === 'true';
+                const esDinamico = comp.metadatos?.itemsetDinamico === 'true'
+                    || (comp.tipo === 'databound-select1' && items.length === 0);
                 const itemsetRef = comp.metadatos?.itemsetRef || '';
                 const resourceUrl = comp.metadatos?.resourceUrl || '';
 
@@ -1235,13 +1434,13 @@
                         <p class="text-[10px] text-violet-600 mt-1">🌐 Cargado en runtime desde servicio externo</p>
                         ${resourceUrl ? `<p class="text-[10px] text-slate-400 font-mono truncate" title="${escaparHtml(resourceUrl)}">${escaparHtml(resourceUrl)}</p>` : ''}`;
                 } else {
-                    const opciones = items.length
-                        ? items.map(it => `<option value="${escaparHtml(it.value || '')}">${escaparHtml(it.label || it.value || '')}</option>`).join('')
-                        : '<option>— Sin opciones en recursos —</option>';
-                    const avisoItems = items.length > 20
-                        ? `<p class="text-[10px] text-slate-400 mt-1">${items.length} opciones en el desplegable</p>` : '';
+                    const opciones = htmlOpcionesSelect(items);
+                    const avisoItems = items.length
+                        ? `<p class="text-[10px] text-emerald-600 mt-1">${items.length} opción${items.length !== 1 ? 'es' : ''} · puede desplegar para explorar</p>`
+                        : '<p class="text-[10px] text-amber-600 mt-1">Sin opciones en fr-form-resources</p>';
                     cuerpoSelect = `
-                        <select disabled class="preview-input w-full border border-slate-300 rounded-md px-3 py-2 text-sm bg-white text-slate-700">
+                        <select class="preview-select w-full border border-slate-300 rounded-md px-3 py-2 text-sm bg-white text-slate-700"
+                                title="Vista previa: explorar opciones del desplegable">
                             <option value="">— Seleccionar —</option>
                             ${opciones}
                         </select>

@@ -8,10 +8,11 @@ Guía del flujo **clic en resultado → XML localizado → edición CRUD → pre
 
 Antes, consultar un logo o localizar un campo en el Asistente mostraba información, pero había que buscar manualmente el fragmento en el XML. Ahora, al pulsar casi cualquier resultado de la interfaz:
 
-1. Se abre la pestaña **Código XML** con el fragmento **seleccionado y desplazado a la vista**.
-2. Aparece el **panel CRUD** en la parte inferior del panel izquierdo con los campos editables del elemento.
-3. Puedes pulsar **Previsualizar** para ver el formulario con los cambios **sin modificar el XML guardado**.
-4. Solo al pulsar **Aplicar al XML** (o el botón equivalente del banner ámbar) se confirman los cambios de forma permanente.
+1. Se abre el **panel CRUD** en la parte inferior **sin cambiar de pestaña** (permaneces en Lista, Calculadoras, Dependencias, etc.).
+2. Opcionalmente, **Ver en XML** abre la pestaña Código XML con el fragmento **seleccionado y desplazado a la vista**.
+3. **← Volver** (o `Esc`) restaura la pestaña anterior, la posición de scroll y resalta el elemento que habías pulsado.
+4. Puedes pulsar **Previsualizar** para ver el formulario con los cambios **sin modificar el XML guardado**.
+5. Solo al pulsar **Aplicar al XML** (o el botón equivalente del banner ámbar) se confirman los cambios de forma permanente.
 
 ---
 
@@ -43,7 +44,8 @@ Antes, consultar un logo o localizar un campo en el Asistente mostraba informaci
 
 | Botón | Acción |
 |-------|--------|
-| **Ver en XML** | Vuelve a la pestaña Código XML y resalta el fragmento |
+| **← Volver** | Restaura la pestaña de origen, scroll y resalta el elemento (atajo `Esc`) |
+| **Ver en XML** | Abre la pestaña Código XML y resalta el fragmento |
 | **Previsualizar** | Aplica cambios en memoria vía `POST /modificar` + `POST /sincronizar-codigo`, actualiza Vista Diseño **sin** tocar `xmlActual` |
 | **Aplicar al XML** | Persiste los cambios en `xmlActual`, textarea XML, changelog y todas las vistas |
 | **Descartar vista previa** | Restaura `componentes`, `estructura` y `dependencias` desde el snapshot previo a la previsualización |
@@ -135,6 +137,14 @@ Variables de estado:
 - `editorCrudActivo` — tipo y metadatos del elemento en edición.
 - `previewBorradorActivo` — indica si hay vista previa sin guardar.
 - `snapshotAntesPreview` — copia de `componentes`, `estructura`, `dependencias` antes del primer preview.
+
+---
+
+## Vista Diseño — desplegables
+
+Los `select1` / `select` estáticos se renderizan con clase `preview-select` (clicables). Las opciones provienen de `comp.items` resueltas en el backend. Los dinámicos (`databound-select1` sin items) muestran aviso violeta y no son editables en preview.
+
+Los demás campos siguen en solo lectura (`preview-input` con `pointer-events: none`).
 
 ---
 

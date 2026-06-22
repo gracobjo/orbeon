@@ -16,7 +16,17 @@ Guía práctica para poner en marcha **Orbeon Form Editor** y modificar plantill
 
 En Windows, si Maven no está en el PATH tras instalarlo (p. ej. con Scoop), abre una **nueva** terminal o reinicia el IDE.
 
-### Opción A — Modo desarrollo (recomendado)
+### Opción A — Script Windows (recomendado)
+
+Doble clic en **`arrancar.cmd`** en la raíz del proyecto, o desde consola:
+
+```cmd
+arrancar.cmd
+```
+
+El script usa Maven empaquetado en `.tools\apache-maven-3.9.16\bin\mvn.cmd` (no requiere Maven en el PATH). Si el puerto **8080** ya está en uso, avisa antes de arrancar — cierra la instancia anterior para cargar la última versión del código.
+
+### Opción B — Modo desarrollo (Maven en PATH)
 
 Desde la raíz del proyecto (`orbeon/`):
 
@@ -30,7 +40,7 @@ Cuando aparezca en consola algo como `Started OrbeonEditorApplication`, abre:
 
 La interfaz web se sirve automáticamente desde `src/main/resources/static/index.html`.
 
-### Opción B — JAR ejecutable
+### Opción C — JAR ejecutable
 
 ```bash
 mvn package -DskipTests
@@ -80,8 +90,9 @@ mvn test
 
 | Síntoma | Causa probable | Solución |
 |---------|----------------|----------|
-| `mvn` no reconocido | Maven no en PATH | Instalar Maven o usar ruta completa |
-| Puerto en uso | Otra instancia en 8080 | Matar proceso o cambiar `server.port` |
+| `mvn` no reconocido | Maven no en PATH | Usar **`arrancar.cmd`** o ruta `.tools\apache-maven-3.9.16\bin\mvn.cmd` |
+| Puerto en uso | Otra instancia en 8080 | Matar proceso o cambiar `server.port`; **reiniciar** tras cambios de código |
+| **Cumplimentar ejemplo → Not Found** | Servidor antiguo en 8080 | Cerrar consola anterior y ejecutar `arrancar.cmd` de nuevo |
 | UI sin estilos | Sin internet | Tailwind se carga de CDN; ver [05-apis-externas.md](05-apis-externas.md) |
 | XML no carga | Archivo corrupto o no Orbeon | Comprobar que es exportación Form Runner |
 
@@ -98,6 +109,24 @@ mvn test
 6. Exportar           →  «Exportar XML de Salida»
 7. Importar en Orbeon →  Form Builder / despliegue
 ```
+
+### Vista PDF y cumplimentación de instancia
+
+1. Cargar `684_F1b_MIXTO_480_Solicitud_v39.txt`.
+2. Pestaña **Vista PDF** → **Cumplimentar ejemplo** rellena `fr-form-instance` con el preset `instrucciones-684` (datos del PDF de referencia *684 F1b Mixto - 480 Solicitud_Instrucciones*).
+3. **Actualizar PDF** genera el impreso con datos de instancia, etiquetas de provincia/municipio y secciones visibles según `relevant`.
+
+**API:**
+
+```bash
+POST /api/formulario/cumplimentar-instancia
+{ "xml": "...", "preset": "instrucciones-684" }
+
+POST /api/formulario/vista-pdf
+{ "xml": "...", "cumplimentarEjemplo": true, "presetInstancia": "instrucciones-684" }
+```
+
+Preset JSON: `src/main/resources/datos/instancia-ejemplo-instrucciones-684.json`.
 
 > **Nuevo:** al pulsar un logo, campo, sección o dependencia en la UI se abre el **editor CRUD contextual** con el XML resaltado y opción de **previsualizar antes de guardar**. Guía completa: **[08 — Editor CRUD contextual y preview](08-editor-crud-contextual-y-preview.md)**.
 

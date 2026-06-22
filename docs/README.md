@@ -27,10 +27,14 @@ Editor visual de plantillas XML de **Orbeon Form Runner** para lectura, edición
 
 ## Inicio rápido
 
+**Windows (recomendado):** doble clic en `arrancar.cmd` en la raíz del proyecto.
+
 ```bash
 mvn spring-boot:run
 # Abrir http://localhost:8080
 ```
+
+> Si Maven no está en el PATH, use `arrancar.cmd` (Maven empaquetado en `.tools/apache-maven-3.9.16`) o la ruta completa indicada en [06 — HOWTO](06-howto-arranque-y-crud.md).
 
 Guía detallada: **[06 — HOWTO arranque y CRUD](06-howto-arranque-y-crud.md)** (puerto ocupado, JAR, verificación, CRUD de labels/hints).
 
@@ -42,7 +46,8 @@ Guía detallada: **[06 — HOWTO arranque y CRUD](06-howto-arranque-y-crud.md)**
 ## Funcionalidades principales
 
 - Carga, edición y exportación de plantillas Orbeon Form Runner
-- Vista diseño, PDF mock, comparación entre versiones
+- Vista diseño, **vista PDF** (rejillas JCYL, instancia cumplimentable), comparación entre versiones
+- **Cumplimentar instancia** con preset del PDF Instrucciones 684 (Ayuntamiento de El Barco de Ávila)
 - Motor de cambios JSON (`changes[]`)
 - **Asistente en lenguaje natural** (pestaña «Asistente»): logos, desplegables CRUD, labels/hints
 - **Dependencias de secciones** (pestaña «Dependencias»): análisis y CRUD de `xf:bind @relevant`
