@@ -137,7 +137,17 @@ En **PRE** las URLs de CNAE apuntan a `wwwpre.ae.jcyl.es/cnaeiae2/api/cnaes2025/
 
 ## 5. Cómo editar calculadoras en el editor
 
-El editor **no tiene pestaña dedicada** a calculadoras (a diferencia de Dependencias / `relevant`). Opciones actuales:
+### Pestaña Calculadoras (recomendado)
+
+1. Cargar plantilla XML.
+2. Pestaña **Calculadoras**.
+3. Cada tarjeta muestra:
+   - **Obtiene datos de:** variables `$campo`, rutas `/form/...` o URLs de API (`doc()`).
+   - Expresión `calculate` completa.
+4. **Clic en la tarjeta** → editor CRUD contextual + XML localizado.
+5. **Editar aquí** → modificar XPath inline → **Guardar en XML**.
+6. **Quitar calculate** → elimina el atributo del bind.
+7. **Exportar XML de Salida** para obtener el fichero modificado.
 
 ### Opción A — Código XML
 
@@ -147,7 +157,35 @@ El editor **no tiene pestaña dedicada** a calculadoras (a diferencia de Depende
 4. Editar el atributo `calculate="..."`.
 5. **Sincronizar** o exportar.
 
-### Opción B — Modificar JSON (`update-bind`)
+### Opción B — Modificar JSON (`update-calculator`)
+
+```json
+{
+  "changes": [
+    {
+      "type": "update-calculator",
+      "bindId": "datosEcono-tipoEmpresa-bind",
+      "calculate": "if ($datosEcono-numTrabajadores<=9) then '3' else '2'"
+    }
+  ]
+}
+```
+
+Eliminar calculadora:
+
+```json
+{
+  "changes": [
+    {
+      "type": "update-calculator",
+      "bindId": "provincializador-bind",
+      "removeCalculate": true
+    }
+  ]
+}
+```
+
+### Opción C — Modificar JSON (`update-bind`)
 
 ```json
 {
@@ -169,11 +207,8 @@ Consulta el esquema: `GET /api/formulario/esquema-modificaciones`.
 
 | Limitación | Detalle |
 |------------|---------|
-| Sin ejecución XPath | El editor no recalcula valores; solo modifica el XML estático |
-| Sin listado en UI | No hay inventario visual de `calculate` (usar CSV o búsqueda en XML) |
-| Expresiones multilínea | En el XML suelen ir con `&#xA;` (salto de línea codificado) |
-
-Ver RF-L09 en [01 — Requisitos funcionales](01-requisitos-funcionales.md).
+| Sin ejecución XPath | El editor no recalcula valores en tiempo real; solo modifica el XML estático |
+| API `doc()` | Las URLs se muestran como fuente; el editor no las invoca |
 
 ---
 
@@ -192,6 +227,22 @@ Búsqueda rápida en el repositorio:
 Select-String -Path 684_F1b_MIXTO_480_Solicitud_v39.txt -Pattern 'calculate=' | Measure-Object
 Select-String -Path 684_F1b_MIXTO_480_Solicitud_v39.txt -Pattern 'id="mi-campo-bind"' -Context 0,5
 ```
+
+---
+
+## 8. API y arquitectura en el editor
+
+| Elemento | Detalle |
+|----------|---------|
+| Servicio | `OrbeonCalculatorService` — detecta binds, clasifica tipo, extrae fuentes |
+| Modelos | `CalculadoraFormulario`, `AnalisisCalculadoras` |
+| Carga | `POST /cargar` y `/sincronizar-codigo` incluyen `calculadoras` en `FormularioResponse` |
+| Análisis bajo demanda | `POST /api/formulario/analizar-calculadoras` con `{ "xml": "..." }` |
+| Modificación | `update-calculator` en `OrbeonModificationService` (`calculate` o `removeCalculate: true`) |
+| UI | Pestaña **Calculadoras** en `index.html`; fallback a `/analizar-calculadoras` si la respuesta de carga no trae el campo (servidor antiguo) |
+| Tests | `OrbeonCalculatorServiceTest` — 141 calculadoras en v39, update/remove `calculate` |
+
+Desarrollador: [04 — Documentación de desarrollador](04-documentacion-desarrollador.md) §4.6.
 
 ---
 

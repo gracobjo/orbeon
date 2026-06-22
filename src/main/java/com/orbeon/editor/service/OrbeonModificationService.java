@@ -61,6 +61,7 @@ public class OrbeonModificationService {
             case "show-section" -> toggleSection(doc, change, false);
             case "update-resource" -> updateResource(doc, change);
             case "update-bind" -> updateBind(doc, change);
+            case "update-calculator" -> updateCalculator(doc, change);
             case "remove-field" -> removeField(doc, change);
             case "add-field" -> addField(doc, change);
             case "add-select-item" -> addSelectItem(doc, change);
@@ -244,6 +245,24 @@ public class OrbeonModificationService {
             }
         }
         return "Bind actualizado: " + bindId;
+    }
+
+    private String updateCalculator(Document doc, Map<String, Object> change) {
+        String bindId = (String) change.get("bindId");
+        Element bindEl = OrbeonXmlUtil.buscarPorId(doc, bindId);
+        if (bindEl == null) {
+            throw new IllegalArgumentException("Bind no encontrado: " + bindId);
+        }
+        if (Boolean.TRUE.equals(change.get("removeCalculate"))) {
+            bindEl.removeAttribute("calculate");
+            return "Calculadora eliminada (calculate quitado): " + bindId;
+        }
+        String calculate = (String) change.get("calculate");
+        if (calculate == null) {
+            throw new IllegalArgumentException("El campo 'calculate' es obligatorio");
+        }
+        bindEl.setAttribute("calculate", calculate);
+        return "Calculadora actualizada: " + bindId;
     }
 
     private String removeField(Document doc, Map<String, Object> change) {
@@ -484,6 +503,7 @@ public class OrbeonModificationService {
                         "show-section    → sectionId",
                         "update-resource → fieldId, resourceType (label|hint|alert), value",
                         "update-bind     → bindId, attributes{}",
+                        "update-calculator → bindId, calculate | removeCalculate:true",
                         "remove-field    → fieldId",
                         "add-field       → sectionId, fieldName",
                         "add-select-item → fieldId, label, value",

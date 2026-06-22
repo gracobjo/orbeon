@@ -20,6 +20,8 @@ package "Spring Boot Application" {
     [OrbeonPdfService] as PDF
     [OrbeonLogoService] as LOGO
     [OrbeonNaturalLanguageService] as NL
+    [OrbeonDependencyService] as DEP
+    [OrbeonCalculatorService] as CALC
   }
 
   package "Infrastructure" {
@@ -46,6 +48,8 @@ CTRL --> CMP
 CTRL --> PDF
 CTRL --> NL
 CTRL --> LOGO
+CTRL --> DEP
+CTRL --> CALC
 NL --> MOD
 NL --> LOGO
 NL --> FORM
@@ -76,7 +80,8 @@ end note
 note bottom of MOD
   Motor changes[]
   update-label, update-hint,
-  update-image, hide-section...
+  update-image, update-calculator,
+  hide-section...
 end note
 
 @enduml

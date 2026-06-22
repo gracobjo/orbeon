@@ -40,7 +40,7 @@
 |----|-----------|-----------|--------|
 | RF-020 | El usuario debe poder editar label y hint de un componente desde la lista guiada. | Alta | Implementado |
 | RF-021 | Las modificaciones deben aplicarse al XML en `fr-form-resources`, no solo en la vista. | Alta | Implementado |
-| RF-022 | El sistema debe soportar un motor de cambios tipados vía JSON (`changes[]`) con tipos: `update-label`, `update-hint`, `update-text`, `update-image`, `hide-section`, `show-section`, `update-resource`, `update-bind`, `remove-field`, `add-field`, `add-select-item`, `update-select-item`, `remove-select-item`, `add-image`. | Alta | Implementado |
+| RF-022 | El sistema debe soportar un motor de cambios tipados vía JSON (`changes[]`) con tipos: `update-label`, `update-hint`, `update-text`, `update-image`, `hide-section`, `show-section`, `update-resource`, `update-bind`, `update-calculator`, `remove-field`, `add-field`, `add-select-item`, `update-select-item`, `remove-select-item`, `add-image`, `update-section-relevant`. | Alta | Implementado |
 | RF-023 | El usuario debe poder pegar o cargar un fichero JSON de modificaciones y aplicarlo. | Media | Implementado |
 | RF-024 | El sistema debe registrar un changelog de cambios aplicados en la sesión de edición. | Media | Implementado |
 | RF-025 | El endpoint `GET /api/formulario/esquema-modificaciones` debe documentar el formato JSON de cambios. | Baja | Implementado |
@@ -71,13 +71,29 @@
 | ID | Requisito | Prioridad | Estado |
 |----|-----------|-----------|--------|
 | RF-060 | Al pulsar un resultado (logo, campo, sección, dependencia) la UI debe abrir el panel CRUD contextual y localizar el fragmento en Código XML. | Alta | Implementado |
-| RF-061 | El panel CRUD debe permitir editar logos (`update-image`), labels/hints/alerts de campos y expresiones `relevant` de secciones. | Alta | Implementado |
+| RF-061 | El panel CRUD debe permitir editar logos (`update-image`), labels/hints/alerts de campos, expresiones `relevant` de secciones y expresiones `calculate` de calculadoras. | Alta | Implementado |
 | RF-062 | Debe existir acción **Previsualizar** que aplique cambios en Vista Diseño sin persistir `xmlActual`. | Alta | Implementado |
 | RF-063 | Debe existir acción **Aplicar al XML** que confirme los cambios y actualice XML, componentes, estructura y changelog. | Alta | Implementado |
 | RF-064 | Debe existir acción **Descartar vista previa** que restaure el estado anterior al preview. | Media | Implementado |
 | RF-065 | Los resultados del Asistente (tarjetas de logos y desplegables) deben ser clicables y abrir el editor contextual. | Media | Implementado |
 
 Guía de usuario: [08-editor-crud-contextual-y-preview.md](08-editor-crud-contextual-y-preview.md).
+
+---
+
+## 3d. Calculadoras XForms (`xf:bind @calculate`)
+
+| ID | Requisito | Prioridad | Estado |
+|----|-----------|-----------|--------|
+| RF-070 | Al cargar o sincronizar XML, el sistema debe detectar todos los `xf:bind` con atributo `calculate` en cualquier plantilla Orbeon. | Alta | Implementado |
+| RF-071 | Para cada calculadora, el sistema debe exponer bind id, ref, label, control asociado, expresión `calculate` y clasificación por tipo. | Alta | Implementado |
+| RF-072 | El sistema debe identificar **fuentes de datos** referenciadas: variables `$campo`, rutas `/form/...`, valor del nodo (`.`) y URLs en `doc()`. | Alta | Implementado |
+| RF-073 | La pestaña **Calculadoras** debe listar, filtrar y mostrar glosario de fuentes con edición inline y editor CRUD contextual. | Alta | Implementado |
+| RF-074 | El usuario debe poder actualizar la expresión `calculate` o eliminarla (`removeCalculate`) y exportar el XML modificado. | Alta | Implementado |
+| RF-075 | `POST /api/formulario/analizar-calculadoras` debe analizar calculadoras sin recargar el formulario completo. | Media | Implementado |
+| RF-076 | La respuesta de `/cargar` y `/sincronizar-codigo` debe incluir `calculadoras` (`AnalisisCalculadoras`). | Alta | Implementado |
+
+Guía de usuario: [09-calculadoras-xforms.md](09-calculadoras-xforms.md).
 
 ---
 
@@ -97,14 +113,15 @@ Guía de usuario: [08-editor-crud-contextual-y-preview.md](08-editor-crud-contex
 
 | ID | Requisito | Prioridad | Estado |
 |----|-----------|-----------|--------|
-| RF-040 | `POST /api/formulario/cargar` — carga multipart y devuelve `{ xml, componentes, estructura }`. | Alta | Implementado |
-| RF-041 | `POST /api/formulario/sincronizar-codigo` — reparsea XML desde JSON. | Media | Implementado |
+| RF-040 | `POST /api/formulario/cargar` — carga multipart y devuelve `{ xml, componentes, estructura, dependencias, calculadoras }`. | Alta | Implementado |
+| RF-041 | `POST /api/formulario/sincronizar-codigo` — reparsea XML desde JSON (incluye dependencias y calculadoras). | Media | Implementado |
 | RF-042 | `POST /api/formulario/exportar` — genera XML con modificaciones opcionales. | Alta | Implementado |
 | RF-043 | `POST /api/formulario/vista-pdf` — genera PDF en binario. | Media | Implementado |
 | RF-044 | `POST /api/formulario/comparar` — compara dos archivos multipart. | Alta | Implementado |
 | RF-045 | `POST /api/formulario/modificar` — aplica `changes[]` y devuelve XML + log. | Alta | Implementado |
 | RF-046 | `POST /api/formulario/lenguaje-natural` — procesa instrucción en español. | Alta | Implementado |
 | RF-047 | `POST /api/formulario/analizar-logos` — inventario de logos con posición. | Media | Implementado |
+| RF-048 | `POST /api/formulario/analizar-calculadoras` — inventario de `xf:bind @calculate` con fuentes de datos. | Media | Implementado |
 
 ---
 
@@ -128,4 +145,4 @@ El parseo reconoce, entre otros:
 | RF-L04 | No hay autenticación ni control de acceso multiusuario. |
 | RF-L05 | `yesno-input` y `appearance="full"` se renderizan de forma simplificada en vista diseño. |
 | RF-L06 | No se persiste el estado en base de datos; todo es en memoria del navegador/sesión HTTP. |
-| RF-L09 | No hay pestaña ni inventario UI de calculadoras (`xf:bind @calculate`); edición vía Código XML o `update-bind`. Ver [09-calculadoras-xforms.md](09-calculadoras-xforms.md). |
+| RF-L09 | El editor no ejecuta XPath en tiempo real; las calculadoras se analizan y editan en XML estático (sin recalcular valores como Orbeon Form Runner). |

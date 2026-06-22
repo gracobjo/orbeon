@@ -46,6 +46,7 @@ Guía detallada: **[06 — HOWTO arranque y CRUD](06-howto-arranque-y-crud.md)**
 - Motor de cambios JSON (`changes[]`)
 - **Asistente en lenguaje natural** (pestaña «Asistente»): logos, desplegables CRUD, labels/hints
 - **Dependencias de secciones** (pestaña «Dependencias»): análisis y CRUD de `xf:bind @relevant`
+- **Calculadoras XForms** (pestaña «Calculadoras»): inventario de `xf:bind @calculate`, fuentes de datos y CRUD
 - **Editor CRUD contextual**: clic en logos, campos, secciones o dependencias → XML localizado + previsualización antes de guardar
 - Análisis de logos con posición en sección
 

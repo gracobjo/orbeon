@@ -447,20 +447,38 @@ GET http://localhost:8080/api/formulario/esquema-modificaciones
 
 ### Calculadoras (`calculate`)
 
-Los campos calculados automáticamente (atributo `calculate` en `xf:bind`) no tienen pestaña propia en la UI. Para listarlos y editarlos:
+Los campos calculados automáticamente (`xf:bind @calculate`) tienen pestaña propia **Calculadoras** en la UI.
 
-- Guía e inventario: **[09 — Calculadoras XForms](09-calculadoras-xforms.md)**
-- Edición JSON de ejemplo:
+1. Cargar el XML.
+2. Pestaña **Calculadoras** — listado con fuentes de datos, filtros y glosario.
+3. Clic en tarjeta → editor CRUD contextual + XML localizado.
+4. **Editar aquí** / **Quitar calculate** / **Exportar XML de Salida**.
+
+Guía completa: **[09 — Calculadoras XForms](09-calculadoras-xforms.md)**
+
+Edición vía JSON (`update-calculator`):
 
 ```json
 {
   "changes": [
     {
-      "type": "update-bind",
+      "type": "update-calculator",
       "bindId": "provincializador-bind",
-      "attributes": {
-        "calculate": "$empresa-provincia"
-      }
+      "calculate": "$empresa-provincia"
+    }
+  ]
+}
+```
+
+Eliminar el atributo `calculate`:
+
+```json
+{
+  "changes": [
+    {
+      "type": "update-calculator",
+      "bindId": "provincializador-bind",
+      "removeCalculate": true
     }
   ]
 }

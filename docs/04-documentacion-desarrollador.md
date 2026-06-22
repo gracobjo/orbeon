@@ -17,7 +17,7 @@ Parsear plantillas **Orbeon Form Runner** (XHTML + XForms + extensiones `fr:`) p
 2. Recorrer `fr:view` y construir modelo de componentes.
 3. Aplicar modificaciones al DOM XML.
 4. Comparar dos versiones y generar PDF aproximado.
-5. Interpretar instrucciones en lenguaje natural (español) y analizar logos.
+5. Interpretar instrucciones en lenguaje natural (español), analizar logos y calculadoras XForms.
 
 **APIs externas:** el backend no llama servicios HTTP externos. Ver [05-apis-externas.md](05-apis-externas.md).
 
@@ -39,6 +39,7 @@ Parsear plantillas **Orbeon Form Runner** (XHTML + XForms + extensiones `fr:`) p
  OrbeonFormService   OrbeonStructureService  OrbeonModificationService
  OrbeonCompareService   OrbeonPdfService
  OrbeonLogoService   OrbeonNaturalLanguageService
+ OrbeonDependencyService   OrbeonCalculatorService
                            │
      ┌─────────────────────┴─────────────────────┐
      ▼                     ▼                     ▼
@@ -151,6 +152,7 @@ Devuelve `EstructuraFormulario` con lista de `SeccionFormulario`, cada una con c
 | `remove-select-item` | `fieldId`, `value` |
 | `add-image` | `imageTag`, `src?`, `filename?`, `mediatype?`, `sectionId?`, `label?` |
 | `update-section-relevant` | `bindId` o `sectionId`, `relevant` \| `removeRelevant: true` |
+| `update-calculator` | `bindId`, `calculate` \| `removeCalculate: true` |
 
 ### 4.5 `OrbeonDependencyService`
 
@@ -166,15 +168,29 @@ Devuelve `EstructuraFormulario` con lista de `SeccionFormulario`, cada una con c
 
 Ver [07 — Dependencias de secciones](07-dependencias-secciones.md).
 
-### 4.6 `OrbeonCompareService`
+### 4.6 `OrbeonCalculatorService`
+
+**Responsabilidad:** Detectar `xf:bind` con atributo `calculate`, extraer fuentes de datos y clasificar el tipo de expresión.
+
+| Método | Descripción |
+|--------|-------------|
+| `analizar(xml)` | `AnalisisCalculadoras` con lista de `CalculadoraFormulario` y glosario de fuentes |
+| `clasificar(expresion)` | Tipo heurístico (vaciar según autónomo, contador provincia, API externa, etc.) |
+| `extraerFuentes(expresion)` | Variables `$campo`, rutas `/form/...`, nodo actual (`.`) y URLs en `doc()` |
+
+**API:** `POST /api/formulario/analizar-calculadoras` — también incluido en respuesta de `/cargar` y `/sincronizar-codigo`.
+
+Ver [09 — Calculadoras XForms](09-calculadoras-xforms.md).
+
+### 4.7 `OrbeonCompareService`
 
 Compara dos listas de componentes indexadas por `id`. Estados: `ANADIDO`, `ELIMINADO`, `MODIFICADO`. Campos comparados: label, hint, alert, tipo, appearance.
 
-### 4.7 `OrbeonPdfService`
+### 4.8 `OrbeonPdfService`
 
 Genera PDF con OpenPDF. Respeta `class="noprintinpdf"`. Agrupa por secciones. **No** invoca Orbeon Server.
 
-### 4.8 `OrbeonLogoService`
+### 4.9 `OrbeonLogoService`
 
 Detecta logos/imágenes (`fr:image`, adjuntos en instancia) y calcula **posición global**, **posición en sección**, `controlId`, `sectionId`, `filename`, `src`.
 
@@ -183,7 +199,7 @@ Detecta logos/imágenes (`fr:image`, adjuntos en instancia) y calcula **posició
 | `analizarLogos(xml)` | `List<LogoEnFormulario>` |
 | `describirLogos(xml)` | Texto legible para el asistente NL |
 
-### 4.9 `OrbeonNaturalLanguageService`
+### 4.10 `OrbeonNaturalLanguageService`
 
 Parser de **reglas en español** (sin LLM). Traduce instrucciones a `changes[]` o consultas.
 
@@ -214,6 +230,8 @@ Diagrama: [diagramas/clases-dominio.puml](diagramas/clases-dominio.puml)
 | `DiferenciaComponente` | tipoCambio, componenteBase, componenteNuevo, cambios[] |
 | `CambioCampo` | campo, valorAnterior, valorNuevo |
 | `LogoEnFormulario` | posicionGlobal, posicionEnSeccion, tag, controlId, sectionId, src, … |
+| `CalculadoraFormulario` | bindId, ref, label, controlId, calculate, tipo, fuentes[] |
+| `AnalisisCalculadoras` | total, calculadoras[], glosarioFuentes{} |
 
 **Metadatos relevantes en `ComponenteFormulario`:**
 
@@ -242,7 +260,9 @@ Diagrama: [diagramas/clases-dominio.puml](diagramas/clases-dominio.puml)
 {
   "xml": "<?xml ...",
   "componentes": [ { "id": "...", "tipo": "select1", "label": "...", "items": [...] } ],
-  "estructura": { "secciones": [...], "totalComponentes": 300 }
+  "estructura": { "secciones": [...], "totalComponentes": 300 },
+  "dependencias": { "total": 42, "elementos": [...] },
+  "calculadoras": { "total": 141, "calculadoras": [...], "glosarioFuentes": {} }
 }
 ```
 
@@ -307,6 +327,32 @@ Diagrama: [diagramas/clases-dominio.puml](diagramas/clases-dominio.puml)
 }
 ```
 
+### POST `/analizar-calculadoras`
+
+```json
+{ "xml": "..." }
+```
+
+**Respuesta:**
+
+```json
+{
+  "total": 141,
+  "glosarioFuentes": { "$empresa-provincia": 3, "$documentoIdent-autonomo": 29 },
+  "calculadoras": [
+    {
+      "bindId": "documentoIdent-tipodoc-bind",
+      "ref": "documentoIdent-tipodoc",
+      "label": "Tipo documento",
+      "controlId": "documentoIdent-tipodoc-control",
+      "calculate": "for $id in $documentoIdent-nifSol return (...)",
+      "tipo": "Inferir tipo documento",
+      "fuentes": ["$documentoIdent-nifSol"]
+    }
+  ]
+}
+```
+
 ### GET `/esquema-modificaciones`
 
 Documentación JSON del formato `changes[]`.
@@ -325,6 +371,7 @@ Variables globales JS (sin framework):
 - `componentes` — lista plana
 - `estructura` — jerarquía secciones
 - `dependencias` — análisis de `relevant` (`OrbeonDependencyService`)
+- `calculadoras` — análisis de `calculate` (`OrbeonCalculatorService`)
 - `changelog` — cambios pendientes de la sesión
 - `editorCrudActivo` — elemento en edición en el panel CRUD contextual
 - `previewBorradorActivo` / `snapshotAntesPreview` — estado de previsualización sin guardar
@@ -337,6 +384,7 @@ Variables globales JS (sin framework):
 | **Asistente** | Instrucciones en lenguaje natural; tarjetas de resultado clicables |
 | Secciones | Árbol por sección; clic en cabecera/campo/imagen → editor CRUD |
 | **Dependencias** | Visibilidad condicional; clic en tarjeta → editor CRUD |
+| **Calculadoras** | `xf:bind @calculate`; fuentes de datos, filtros, edición inline y CRUD |
 | Modificar JSON | Editor `changes[]` |
 | Cambios | Changelog acumulado |
 | Código XML | Textarea + sincronizar; destino al localizar desde CRUD |
@@ -353,7 +401,7 @@ Barra inferior del panel izquierdo. Funciones principales en `index.html`:
 | `aplicarEditorCrud()` | Persiste cambios vía `/modificar` y `procesarRespuesta` |
 | `descartarPreviewBorrador()` | Restaura snapshot de componentes/estructura/dependencias |
 
-Tipos soportados: `logo`, `campo`, `desplegable`, `seccion`, `dependencia`.
+Tipos soportados: `logo`, `campo`, `desplegable`, `seccion`, `dependencia`, `calculadora`.
 
 Guía de usuario: [08-editor-crud-contextual-y-preview.md](08-editor-crud-contextual-y-preview.md).
 

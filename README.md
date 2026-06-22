@@ -14,10 +14,11 @@ Abrir [http://localhost:8080](http://localhost:8080)
 
 ## Funcionalidades
 
-- Parseo y edición de XML Orbeon (labels, hints, alerts, desplegables, logos)
+- Parseo y edición de XML Orbeon (labels, hints, alerts, desplegables, logos, calculadoras)
 - Vista diseño y PDF mock
 - Comparación entre versiones (PRE vs v39, etc.)
 - Asistente en español + panel CRUD de desplegables
+- **Calculadoras XForms** (pestaña «Calculadoras»): inventario de `xf:bind @calculate`, fuentes y CRUD
 - Editor CRUD contextual: clic en resultados → XML + previsualizar antes de guardar
 - API REST en `/api/formulario/*`
 

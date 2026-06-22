@@ -76,6 +76,7 @@
             <button id="tabAsistente" class="flex-shrink-0 px-3 py-3 text-xs text-center text-slate-500 hover:text-slate-700 transition">Asistente</button>
             <button id="tabSecciones" class="flex-shrink-0 px-3 py-3 text-xs text-center text-slate-500 hover:text-slate-700 transition">Secciones</button>
             <button id="tabDependencias" class="flex-shrink-0 px-3 py-3 text-xs text-center text-slate-500 hover:text-slate-700 transition">Dependencias</button>
+            <button id="tabCalculadoras" class="flex-shrink-0 px-3 py-3 text-xs text-center text-slate-500 hover:text-slate-700 transition">Calculadoras</button>
             <button id="tabModificar" class="flex-shrink-0 px-3 py-3 text-xs text-center text-slate-500 hover:text-slate-700 transition">Modificar JSON</button>
             <button id="tabChangelog" class="flex-shrink-0 px-3 py-3 text-xs text-center text-slate-500 hover:text-slate-700 transition">Cambios <span id="cntChangelog" class="ml-1 bg-slate-200 px-1 rounded text-[10px]">0</span></button>
             <button id="tabCodigo" class="flex-shrink-0 px-3 py-3 text-xs text-center text-slate-500 hover:text-slate-700 transition">Código XML</button>
@@ -181,6 +182,29 @@
             <details class="border-t border-slate-200 bg-slate-50 shrink-0 max-h-40 overflow-y-auto">
                 <summary class="px-3 py-2 text-xs font-semibold text-slate-600 cursor-pointer">Glosario de disparadores</summary>
                 <div id="depGlosario" class="px-3 pb-3 text-[10px] text-slate-500 space-y-1"></div>
+            </details>
+        </div>
+
+        <!-- Pestaña Calculadoras XForms -->
+        <div id="panelCalculadoras" class="flex-1 flex flex-col hidden overflow-hidden">
+            <div class="p-3 border-b border-slate-100 bg-gradient-to-r from-sky-50 to-violet-50 shrink-0">
+                <p class="text-xs text-slate-600 mb-2">
+                    Campos con valor automático (<code class="text-[10px]">xf:bind @calculate</code>).
+                    Muestra de dónde obtiene los datos y permite editar la expresión para exportar XML.
+                </p>
+                <div id="calcResumen" class="flex flex-wrap gap-2 text-[10px] text-slate-500"></div>
+            </div>
+            <div class="p-3 border-b border-slate-100 shrink-0">
+                <input id="buscarCalculadoras" type="search" placeholder="Filtrar por bind, campo, fuente o expresión…"
+                       class="w-full text-sm border border-slate-300 rounded-md px-3 py-1.5 focus:ring-2 focus:ring-orbeon-500 outline-none">
+            </div>
+            <div id="calcFeedback" class="hidden mx-3 mt-2 px-3 py-2 rounded-md text-xs border shrink-0"></div>
+            <div id="listaCalculadoras" class="flex-1 overflow-y-auto p-3 space-y-2 min-h-0">
+                <p class="text-slate-400 text-xs text-center py-8">Carga un XML para analizar calculadoras</p>
+            </div>
+            <details class="border-t border-slate-200 bg-slate-50 shrink-0 max-h-40 overflow-y-auto">
+                <summary class="px-3 py-2 text-xs font-semibold text-slate-600 cursor-pointer">Glosario de fuentes de datos</summary>
+                <div id="calcGlosario" class="px-3 pb-3 text-[10px] text-slate-500 space-y-1"></div>
             </details>
         </div>
 
@@ -355,6 +379,9 @@
     let dependencias = null;
     let filtroDependencias = '';
     let dependenciaEditandoId = null;
+    let calculadoras = null;
+    let filtroCalculadoras = '';
+    let calculadoraEditandoId = null;
 
     const TIPO_VISIBILIDAD = {
         siempre_visible: { label: 'Siempre visible', cls: 'bg-slate-100 text-slate-600' },
@@ -362,6 +389,20 @@
         oculta_fija: { label: 'Oculta fija', cls: 'bg-red-100 text-red-700' },
         visible_fija: { label: 'Visible fija', cls: 'bg-emerald-100 text-emerald-800' },
         solo_pdf: { label: 'Solo PDF', cls: 'bg-violet-100 text-violet-800' }
+    };
+
+    const TIPO_CALCULO = {
+        'api-externa': { label: 'API externa', cls: 'bg-violet-100 text-violet-800' },
+        'centro-directivo': { label: 'Centro directivo', cls: 'bg-indigo-100 text-indigo-800' },
+        'contador': { label: 'Contador', cls: 'bg-cyan-100 text-cyan-800' },
+        'inferir-documento': { label: 'Inferir documento', cls: 'bg-blue-100 text-blue-800' },
+        'normalizar': { label: 'Normalizar', cls: 'bg-slate-100 text-slate-700' },
+        'vaciar-autonomo': { label: 'Según autónomo', cls: 'bg-amber-100 text-amber-800' },
+        'vaciar-vinculadas': { label: 'Si vinculadas', cls: 'bg-amber-100 text-amber-800' },
+        'vaciar-condicional': { label: 'Vaciar condicional', cls: 'bg-orange-100 text-orange-800' },
+        'tamano-empresa': { label: 'Tamaño empresa', cls: 'bg-emerald-100 text-emerald-800' },
+        'copia-campo': { label: 'Copia campo', cls: 'bg-teal-100 text-teal-800' },
+        otro: { label: 'Otro', cls: 'bg-slate-100 text-slate-600' }
     };
 
     const $ = (sel) => document.querySelector(sel);
@@ -423,6 +464,9 @@
         }
         if (tipo === 'seccion' || tipo === 'dependencia') {
             return [meta.sectionId, meta.bindId, meta.id].filter(Boolean);
+        }
+        if (tipo === 'calculadora') {
+            return [meta.bindId, meta.controlId, meta.ref, meta.ref + '-bind'].filter(Boolean);
         }
         return [meta.id].filter(Boolean);
     }
@@ -489,6 +533,22 @@
                         class="mt-0.5 w-full border border-slate-300 rounded-md px-2 py-1.5 text-xs font-mono outline-none focus:ring-1 focus:ring-orbeon-500">${escaparHtml(meta.expresionRelevant || meta.relevant || '')}</textarea>
                 </label>
                 <p class="text-[10px] text-slate-400">Vacío = siempre visible (quitar relevant al aplicar si está vacío)</p>`;
+        } else if (tipo === 'calculadora') {
+            form.innerHTML = `
+                ${campoEditor('Bind ID', 'ed-bindId', meta.bindId, { readonly: true, campo: 'bindId' })}
+                ${campoEditor('Campo instancia (ref)', 'ed-ref', meta.ref || '', { readonly: true, campo: 'ref' })}
+                ${campoEditor('Control', 'ed-controlId', meta.controlId || '', { readonly: true, campo: 'controlId' })}
+                <label class="block">
+                    <span class="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Expresión calculate (XPath)</span>
+                    <textarea id="ed-calculate" data-campo="calculate" rows="5"
+                        class="mt-0.5 w-full border border-slate-300 rounded-md px-2 py-1.5 text-xs font-mono outline-none focus:ring-1 focus:ring-orbeon-500">${escaparHtml(meta.expresionCalculate || meta.calculate || '')}</textarea>
+                </label>
+                ${(meta.descripcionesFuentes || []).length ? `
+                <div class="text-[10px] text-slate-500">
+                    <span class="font-semibold">Fuentes:</span>
+                    ${(meta.descripcionesFuentes || []).map(d => `<span class="inline-block mr-1 px-1.5 py-0.5 bg-sky-50 rounded">${escaparHtml(d)}</span>`).join('')}
+                </div>` : ''}
+                <p class="text-[10px] text-slate-400">Deje vacío y use «Quitar calculate» en la pestaña Calculadoras para eliminar la regla.</p>`;
         }
         $('#editorCrudDescartar').classList.toggle('hidden', !previewBorradorActivo);
     }
@@ -531,6 +591,17 @@
                     changes.push({ type: 'update-section-relevant', bindId, sectionId, removeRelevant: true });
                 } else {
                     changes.push({ type: 'update-section-relevant', bindId, sectionId, relevant });
+                }
+            }
+        } else if (tipo === 'calculadora') {
+            const bindId = leerValorEditor('bindId') || meta.bindId;
+            const calculate = document.querySelector('#editorCrudForm [data-campo="calculate"]')?.value ?? '';
+            const orig = (meta.expresionCalculate || meta.calculate || '');
+            if (calculate.trim() !== orig.trim()) {
+                if (!calculate.trim()) {
+                    changes.push({ type: 'update-calculator', bindId, removeCalculate: true });
+                } else {
+                    changes.push({ type: 'update-calculator', bindId, calculate: calculate.trim() });
                 }
             }
         }
@@ -578,7 +649,8 @@
                 snapshotAntesPreview = {
                     componentes: JSON.parse(JSON.stringify(componentes)),
                     estructura: estructura ? JSON.parse(JSON.stringify(estructura)) : null,
-                    dependencias: dependencias ? JSON.parse(JSON.stringify(dependencias)) : null
+                    dependencias: dependencias ? JSON.parse(JSON.stringify(dependencias)) : null,
+                    calculadoras: calculadoras ? JSON.parse(JSON.stringify(calculadoras)) : null
                 };
             }
             const baseXml = xmlActual;
@@ -587,9 +659,11 @@
             componentes = sync.componentes || [];
             estructura = sync.estructura || estructura;
             dependencias = sync.dependencias || dependencias;
+            calculadoras = sync.calculadoras || calculadoras;
             renderizarPreview(componentes);
             renderizarSecciones();
             renderizarDependencias();
+            renderizarCalculadoras();
             activarBannerPreview(true);
             cambiarTabPreview('preview');
             mostrarToast('Vista previa actualizada — pulse Aplicar al XML para guardar', 'ok');
@@ -636,7 +710,14 @@
         if (t === 'campo' || t === 'desplegable') {
             return { label: leerValorEditor('label'), hint: leerValorEditor('hint'), alert: leerValorEditor('alert') };
         }
-        return { expresionRelevant: leerValorEditor('relevant'), relevant: leerValorEditor('relevant') };
+        if (t === 'seccion' || t === 'dependencia') {
+            return { expresionRelevant: leerValorEditor('relevant'), relevant: leerValorEditor('relevant') };
+        }
+        if (t === 'calculadora') {
+            const ta = document.querySelector('#editorCrudForm [data-campo="calculate"]');
+            return { expresionCalculate: ta ? ta.value : '', calculate: ta ? ta.value : '' };
+        }
+        return {};
     }
 
     function descartarPreviewBorrador() {
@@ -644,9 +725,11 @@
             componentes = snapshotAntesPreview.componentes;
             estructura = snapshotAntesPreview.estructura;
             dependencias = snapshotAntesPreview.dependencias;
+            calculadoras = snapshotAntesPreview.calculadoras;
             renderizarPreview();
             renderizarSecciones();
             renderizarDependencias();
+            renderizarCalculadoras();
         }
         snapshotAntesPreview = null;
         activarBannerPreview(false);
@@ -707,6 +790,18 @@
         });
     }
 
+    function navegarDesdeCalculadora(calc) {
+        abrirEditorCrud('calculadora', {
+            bindId: calc.bindId,
+            ref: calc.ref,
+            controlId: calc.controlId,
+            titulo: calc.label || calc.ref || calc.bindId,
+            expresionCalculate: calc.expresionCalculate,
+            descripcionesFuentes: calc.descripcionesFuentes,
+            fuentesDatos: calc.fuentesDatos
+        });
+    }
+
     $('#editorCrudCerrar').addEventListener('click', cerrarEditorCrud);
     $('#editorCrudIrXml').addEventListener('click', () => {
         if (editorCrudActivo) irACodigoXml(editorCrudActivo.anchors, true);
@@ -749,13 +844,13 @@
     }
 
     /* --- Pestañas panel izquierdo --- */
-    const tabsIzq = { guiado: 'tabGuiado', asistente: 'tabAsistente', secciones: 'tabSecciones', dependencias: 'tabDependencias', modificar: 'tabModificar', changelog: 'tabChangelog', codigo: 'tabCodigo' };
+    const tabsIzq = { guiado: 'tabGuiado', asistente: 'tabAsistente', secciones: 'tabSecciones', dependencias: 'tabDependencias', calculadoras: 'tabCalculadoras', modificar: 'tabModificar', changelog: 'tabChangelog', codigo: 'tabCodigo' };
     Object.keys(tabsIzq).forEach(t => {
         document.getElementById(tabsIzq[t]).addEventListener('click', () => cambiarTab(t));
     });
 
     function cambiarTab(tab) {
-        const paneles = { guiado: 'panelGuiado', asistente: 'panelAsistente', secciones: 'panelSecciones', dependencias: 'panelDependencias', modificar: 'panelModificar', changelog: 'panelChangelog', codigo: 'panelCodigo' };
+        const paneles = { guiado: 'panelGuiado', asistente: 'panelAsistente', secciones: 'panelSecciones', dependencias: 'panelDependencias', calculadoras: 'panelCalculadoras', modificar: 'panelModificar', changelog: 'panelChangelog', codigo: 'panelCodigo' };
         Object.entries(paneles).forEach(([k, id]) => {
             document.getElementById(id).classList.toggle('hidden', k !== tab);
             document.getElementById(tabsIzq[k]).classList.toggle('tab-active', k === tab);
@@ -766,6 +861,7 @@
     $('#buscarLista').addEventListener('input', (e) => { filtroLista = e.target.value.toLowerCase(); renderizarComponentes(); });
     $('#buscarSecciones').addEventListener('input', (e) => { filtroSecciones = e.target.value.toLowerCase(); renderizarSecciones(); });
     $('#buscarDependencias').addEventListener('input', (e) => { filtroDependencias = e.target.value.toLowerCase(); renderizarDependencias(); });
+    $('#buscarCalculadoras').addEventListener('input', (e) => { filtroCalculadoras = e.target.value.toLowerCase(); renderizarCalculadoras(); });
 
     /* --- Pestañas panel derecho (Diseño / PDF) --- */
     $('#tabPreview').addEventListener('click', () => cambiarTabPreview('preview'));
@@ -1171,6 +1267,7 @@
         componentes = data.componentes || [];
         estructura = data.estructura || null;
         dependencias = data.dependencias || null;
+        calculadoras = data.calculadoras || null;
         xmlActual = data.xml || '';
         $('#textareaXml').value = xmlActual;
         if (resetChangelog) changeLog = [];
@@ -1181,9 +1278,27 @@
         habilitarExportacion(true);
         renderizarDesplegablesAsistente();
         renderizarDependencias();
+        renderizarCalculadoras();
         if (!tabPreviewActiva) {
             generarVistaPdf();
         }
+        if (xmlActual && (!calculadoras || !calculadoras.elementos?.length)) {
+            cargarCalculadorasDesdeApi();
+        }
+    }
+
+    async function cargarCalculadorasDesdeApi() {
+        if (!xmlActual) return;
+        try {
+            const res = await fetch(`${API}/analizar-calculadoras`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ xml: xmlActual })
+            });
+            if (!res.ok) return;
+            calculadoras = await res.json();
+            renderizarCalculadoras();
+        } catch (_) { /* servidor sin endpoint o sin red */ }
     }
 
     /* --- Dependencias de visibilidad --- */
@@ -1357,6 +1472,166 @@
                 } catch (err) {
                     mostrarFeedbackDependencia(err.message, 'error');
                     mostrarToast(err.message, 'error');
+                }
+            });
+        });
+    }
+
+    /* --- Calculadoras XForms --- */
+    function mostrarFeedbackCalculadora(mensaje, tipo = 'ok') {
+        const el = $('#calcFeedback');
+        const estilos = {
+            ok: 'bg-emerald-50 border-emerald-200 text-emerald-800',
+            error: 'bg-red-50 border-red-200 text-red-800',
+            info: 'bg-blue-50 border-blue-200 text-blue-800'
+        };
+        el.className = `mx-3 mt-2 px-3 py-2 rounded-md text-xs border shrink-0 ${estilos[tipo] || estilos.info}`;
+        el.textContent = mensaje;
+        el.classList.remove('hidden');
+        if (tipo === 'ok') setTimeout(() => el.classList.add('hidden'), 5000);
+    }
+
+    function renderizarCalculadoras() {
+        const lista = $('#listaCalculadoras');
+        const resumen = $('#calcResumen');
+        const glosarioEl = $('#calcGlosario');
+
+        if (!calculadoras || !calculadoras.elementos?.length) {
+            const msg = xmlActual
+                ? '<p class="text-slate-400 text-xs text-center py-8">Analizando calculadoras…</p>'
+                : '<p class="text-slate-400 text-xs text-center py-8">Carga un XML para analizar calculadoras</p>';
+            lista.innerHTML = msg;
+            resumen.innerHTML = '';
+            glosarioEl.innerHTML = '';
+            return;
+        }
+
+        resumen.innerHTML = `
+            <span class="px-2 py-0.5 bg-white rounded border border-slate-200">${calculadoras.total} calculadoras</span>
+            <span class="px-2 py-0.5 bg-violet-50 rounded border border-violet-200 text-violet-800">${calculadoras.totalConApiExterna || 0} con API externa</span>
+            <span class="px-2 py-0.5 bg-slate-100 rounded border border-slate-200">${calculadoras.totalSoloLectura || 0} solo lectura</span>`;
+
+        const glosario = calculadoras.glosarioFuentes || {};
+        glosarioEl.innerHTML = Object.entries(glosario).map(([k, v]) =>
+            `<div><span class="font-mono text-slate-700">${k.startsWith('/') ? escaparHtml(k) : '$' + escaparHtml(k)}</span> — ${escaparHtml(v)}</div>`
+        ).join('') || '<p class="text-slate-400">Sin fuentes referenciadas</p>';
+
+        const filtro = filtroCalculadoras.toLowerCase();
+        const items = calculadoras.elementos.filter(el => {
+            if (!filtro) return true;
+            const blob = `${el.bindId} ${el.ref} ${el.label} ${el.expresionCalculate || ''} ${(el.fuentesDatos || []).join(' ')} ${(el.urlsExternas || []).join(' ')}`.toLowerCase();
+            return blob.includes(filtro);
+        });
+
+        if (!items.length) {
+            lista.innerHTML = '<p class="text-slate-400 text-xs text-center py-6">Sin coincidencias</p>';
+            return;
+        }
+
+        lista.innerHTML = items.map(el => {
+            const tc = TIPO_CALCULO[el.tipoCalculo] || TIPO_CALCULO.otro;
+            const fuentes = (el.descripcionesFuentes || []).map((d, i) => {
+                const raw = (el.fuentesDatos || [])[i] || '';
+                const pref = raw.startsWith('/') ? '' : '$';
+                return `<span class="inline-block px-1.5 py-0.5 bg-sky-50 text-sky-800 rounded text-[10px] mr-1 mb-1" title="${escaparHtml(pref + raw)}">${escaparHtml(d)}</span>`;
+            }).join('');
+            const apis = (el.urlsExternas || []).map(u =>
+                `<span class="inline-block px-1.5 py-0.5 bg-violet-50 text-violet-800 rounded text-[10px] mr-1 mb-1 font-mono truncate max-w-full" title="${escaparHtml(u)}">API: ${escaparHtml(u.length > 48 ? u.substring(0, 48) + '…' : u)}</span>`
+            ).join('');
+            const expr = el.expresionCalculate
+                ? `<pre class="text-[10px] font-mono bg-slate-900 text-sky-100 p-2 rounded mt-2 overflow-x-auto whitespace-pre-wrap max-h-32">${escaparHtml(el.expresionCalculate)}</pre>`
+                : '';
+            const editando = calculadoraEditandoId === el.bindId;
+            const formEdit = editando ? `
+                <div class="mt-3 pt-3 border-t border-slate-200 space-y-2">
+                    <label class="block text-[10px] font-semibold text-slate-600">Expresión calculate (XPath)</label>
+                    <textarea id="calcExpr-${escaparHtml(el.bindId)}" rows="4"
+                        class="w-full text-xs font-mono border border-slate-300 rounded-md px-2 py-1.5 focus:ring-1 focus:ring-orbeon-500 outline-none">${escaparHtml(el.expresionCalculate || '')}</textarea>
+                    <div class="flex flex-wrap gap-2">
+                        <button type="button" class="calc-guardar px-3 py-1.5 bg-orbeon-500 hover:bg-orbeon-600 text-white text-xs rounded-md"
+                            data-bind="${escaparHtml(el.bindId)}">Guardar en XML</button>
+                        <button type="button" class="calc-quitar px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 text-xs rounded-md border border-red-200"
+                            data-bind="${escaparHtml(el.bindId)}">Quitar calculate</button>
+                        <button type="button" class="calc-cancelar px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-xs rounded-md">Cancelar</button>
+                    </div>
+                </div>` : '';
+
+            return `
+                <article class="calc-item border border-slate-200 rounded-lg p-3 bg-white shadow-sm clickable-result cursor-pointer hover:border-orbeon-300"
+                    data-calc-bind="${escaparHtml(el.bindId)}" title="Clic para editor CRUD + XML">
+                    <div class="flex items-start gap-2">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <h4 class="text-xs font-semibold text-slate-800 truncate">${escaparHtml(el.label || el.ref || el.bindId)}</h4>
+                                <span class="text-[10px] px-1.5 py-0.5 rounded ${tc.cls}">${tc.label}</span>
+                                ${el.soloLectura ? '<span class="text-[10px] bg-slate-100 px-1 rounded">readonly</span>' : ''}
+                            </div>
+                            <p class="text-[10px] font-mono text-slate-500 mt-0.5">${escaparHtml(el.bindId)} · ref: ${escaparHtml(el.ref || '—')}</p>
+                            ${el.controlId ? `<p class="text-[10px] text-slate-400">control: ${escaparHtml(el.controlId)}</p>` : ''}
+                            ${fuentes || apis ? `<div class="mt-2"><span class="text-[10px] font-semibold text-slate-500">Obtiene datos de:</span><div class="flex flex-wrap mt-1">${fuentes}${apis}</div></div>` : ''}
+                            ${expr}
+                            ${formEdit}
+                        </div>
+                        ${editando ? '' : `<button type="button" class="calc-editar shrink-0 text-[10px] px-2 py-1 border border-orbeon-500 text-orbeon-600 hover:bg-orbeon-50 rounded" data-bind="${escaparHtml(el.bindId)}">Editar aquí</button>`}
+                    </div>
+                </article>`;
+        }).join('');
+
+        lista.querySelectorAll('.calc-item').forEach(art => {
+            art.addEventListener('click', (e) => {
+                if (e.target.closest('button, textarea')) return;
+                const el = items.find(x => x.bindId === art.dataset.calcBind);
+                if (el) navegarDesdeCalculadora(el);
+            });
+        });
+        lista.querySelectorAll('.calc-editar').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const el = items.find(x => x.bindId === btn.dataset.bind);
+                if (el) navegarDesdeCalculadora(el);
+                else {
+                    calculadoraEditandoId = btn.dataset.bind;
+                    renderizarCalculadoras();
+                }
+            });
+        });
+        lista.querySelectorAll('.calc-cancelar').forEach(btn => {
+            btn.addEventListener('click', () => {
+                calculadoraEditandoId = null;
+                renderizarCalculadoras();
+            });
+        });
+        lista.querySelectorAll('.calc-guardar').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const bindId = btn.dataset.bind;
+                const ta = document.getElementById(`calcExpr-${bindId}`);
+                const expr = (ta?.value ?? '').trim();
+                if (!expr) {
+                    mostrarFeedbackCalculadora('La expresión no puede estar vacía. Use «Quitar calculate» para eliminar.', 'error');
+                    return;
+                }
+                try {
+                    await aplicarCambioXml([{ type: 'update-calculator', bindId, calculate: expr }], `Calculadora actualizada: ${bindId}`);
+                    calculadoraEditandoId = null;
+                    mostrarFeedbackCalculadora(`Guardado: ${bindId}`, 'ok');
+                    renderizarCalculadoras();
+                } catch (err) {
+                    mostrarFeedbackCalculadora(err.message, 'error');
+                    mostrarToast(err.message, 'error');
+                }
+            });
+        });
+        lista.querySelectorAll('.calc-quitar').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const bindId = btn.dataset.bind;
+                if (!confirm(`¿Quitar calculate de ${bindId}?`)) return;
+                try {
+                    await aplicarCambioXml([{ type: 'update-calculator', bindId, removeCalculate: true }], `Calculadora eliminada: ${bindId}`);
+                    calculadoraEditandoId = null;
+                    mostrarFeedbackCalculadora(`Calculate eliminado: ${bindId}`, 'ok');
+                    renderizarCalculadoras();
+                } catch (err) {
+                    mostrarFeedbackCalculadora(err.message, 'error');
                 }
             });
         });

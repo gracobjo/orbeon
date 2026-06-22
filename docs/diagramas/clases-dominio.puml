@@ -45,6 +45,24 @@ package "com.orbeon.editor.model" {
     - cambios: List<CambioCampo>
   }
 
+  class CalculadoraFormulario {
+    - bindId: String
+    - ref: String
+    - label: String
+    - controlId: String
+    - calculate: String
+    - tipo: String
+    - fuentes: List<String>
+  }
+
+  class AnalisisCalculadoras {
+    - total: int
+    - calculadoras: List<CalculadoraFormulario>
+    - glosarioFuentes: Map<String,Integer>
+  }
+
+  AnalisisCalculadoras "1" *-- "0..*" CalculadoraFormulario
+
   class CambioCampo {
     - campo: String
     - valorAnterior: String
@@ -65,6 +83,7 @@ package "com.orbeon.editor.dto" {
     - xml: String
     - componentes: List<ComponenteFormulario>
     - estructura: EstructuraFormulario
+    - calculadoras: AnalisisCalculadoras
   }
 
   class ModificacionRequest {
@@ -87,6 +106,7 @@ package "com.orbeon.editor.dto" {
 
   FormularioResponse --> ComponenteFormulario
   FormularioResponse --> EstructuraFormulario
+  FormularioResponse --> AnalisisCalculadoras
   ModificacionRequest --> ModificacionResponse
   ComparacionResponse --> DiferenciaComponente
 }

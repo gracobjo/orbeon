@@ -243,6 +243,20 @@ flowchart LR
 
 ---
 
+## CU-14 — Analizar y editar calculadoras XForms
+
+| Campo | Valor |
+|-------|-------|
+| **ID** | CU-14 |
+| **Actor** | Desarrollador, Analista |
+| **Descripción** | Inventariar `xf:bind @calculate`, ver fuentes de datos referenciadas y editar o eliminar expresiones. |
+| **Precondiciones** | XML cargado. |
+| **Flujo principal** | 1. Usuario carga plantilla → respuesta incluye `calculadoras` (o fallback `POST /analizar-calculadoras`).<br>2. Pestaña **Calculadoras**: listado, filtros por tipo/fuente, glosario.<br>3. Clic en tarjeta → editor CRUD (`calculadora`) + XML localizado (CU-13).<br>4. Edición inline o **Quitar calculate** → `update-calculator` vía `/modificar`.<br>5. Exportar XML modificado. |
+| **Flujos alternativos** | Edición en Código XML o pestaña Modificar JSON (`update-bind` / `update-calculator`). |
+| **Requisitos** | RF-070 a RF-076, RF-048, RF-061 |
+
+---
+
 ## Matriz trazabilidad (resumen)
 
 | Caso de uso | Requisitos funcionales principales |
@@ -260,3 +274,4 @@ flowchart LR
 | CU-11 | RF-050–RF-058, RF-065 |
 | CU-12 | RF-051, RF-047 |
 | CU-13 | RF-060–RF-065 |
+| CU-14 | RF-070–RF-076, RF-048 |
