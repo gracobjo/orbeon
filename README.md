@@ -17,6 +17,7 @@ Abrir [http://localhost:8080](http://localhost:8080)
 - Parseo y edición de XML Orbeon (labels, hints, alerts, desplegables, logos, calculadoras)
 - Vista diseño y PDF mock
 - Comparación entre versiones (PRE vs v39, etc.)
+- **Análisis de PDF de instrucciones** — anotaciones del margen → cambios XML (catálogo 684/480)
 - Asistente en español + panel CRUD de desplegables
 - **Calculadoras XForms** (pestaña «Calculadoras»): inventario de `xf:bind @calculate`, fuentes y CRUD
 - Editor CRUD contextual: clic en resultados → XML + previsualizar antes de guardar
@@ -32,6 +33,7 @@ Ver carpeta [`docs/`](docs/README.md):
 | [Editor CRUD contextual](docs/08-editor-crud-contextual-y-preview.md) | Navegar desde resultados, preview antes de guardar |
 | [Dependencias de secciones](docs/07-dependencias-secciones.md) | Visibilidad condicional y CRUD de `relevant` |
 | [Calculadoras XForms](docs/09-calculadoras-xforms.md) | `xf:bind @calculate` en plantilla 684/480 |
+| [PDF instrucciones](docs/11-analisis-pdf-instrucciones.md) | Anotaciones PDF → cambios XML, etiquetas Auto/alta |
 | [Desarrollador](docs/04-documentacion-desarrollador.md) | Arquitectura y API |
 | [APIs externas](docs/05-apis-externas.md) | Dependencias de red |
 

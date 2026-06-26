@@ -1,0 +1,141 @@
+{
+  "formulario": "684_F1b_MIXTO_480_Solicitud",
+  "versionBase": "v39",
+  "versionObjetivo": "PRE",
+  "fuentePdf": "684 F1b Mixto - 480 Solicitud_Instrucciones.pdf",
+  "descripcion": "Mapeo validado entre anotaciones del PDF de instrucciones y cambios XML v39→PRE",
+  "reglasApartado": [
+    {
+      "id": "eliminar-consulta-verificacion",
+      "patrones": ["consulta y verificacion", "eliminar todo el apartado", "oposicion expresa"],
+      "paginas": [5],
+      "intencion": "eliminar-apartado-consulta",
+      "descripcion": "Eliminar sección CONSULTA Y VERIFICACIÓN DE DATOS y anexos condicionados",
+      "camposEliminar": [
+        "permisosConsultaSufo-sufoid1-control",
+        "permisosConsultaSufo-textosufoid1-control",
+        "permisosConsultaSufo-textoOpongo-control",
+        "permisosConsultaSufo-sufoid26-control",
+        "permisosConsultaSufo-textosufoid26-control",
+        "anexos-certSegSocial-control",
+        "anexos-textocertSegSocial-control"
+      ],
+      "actualizarBinds": [
+        {
+          "bindId": "anexos-textoidRepresentante-bind",
+          "removeRelevant": true
+        }
+      ]
+    }
+  ],
+  "reglasDeclaracion": [
+    {
+      "id": "eliminar-roac",
+      "fragmentoTexto": "Registro Oficial de Auditores de Cuentas",
+      "camposEliminar": [
+        "declaracionesResponsables-inscritoROAC-control",
+        "declaracionesResponsables-textoinscritoROAC-control"
+      ]
+    },
+    {
+      "id": "eliminar-plazos-pago",
+      "fragmentoTexto": "Cumple los plazos de pago establecidos en la Ley 3/2004",
+      "camposEliminar": [
+        "declaracionesResponsables-plazosPago-control",
+        "declaracionesResponsables-textoplazosPago-control"
+      ]
+    },
+    {
+      "id": "eliminar-responsabilidad-social",
+      "fragmentoTexto": "Acuerdo 82/2020, de 12 de noviembre",
+      "camposEliminar": [],
+      "nota": "En el PDF se tacha pero PRE mantiene responsabilidadSocial; revisar manualmente"
+    }
+  ],
+  "reglasAnexo": [
+    {
+      "id": "eliminar-transporte",
+      "fragmentoTexto": "Documento acreditativo de disponibilidad de instalaciones",
+      "camposEliminar": [
+        "anexos-acreditaTransporte-control",
+        "anexos-textoacreditaTransporte-control"
+      ]
+    },
+    {
+      "id": "eliminar-cert-secretario",
+      "fragmentoTexto": "Certificado expedido por la secretaria de la entidad, acreditando la falta de uso",
+      "camposEliminar": [
+        "anexos-certifSecretario-control",
+        "anexos-textocertifSecretario-control"
+      ]
+    },
+    {
+      "id": "sustituir-id-representante",
+      "patrones": ["documento de identidad del representante"],
+      "fieldId": "anexos-textoidRepresentante",
+      "nuevoTexto": "<div>Documento de identidad del representante.</div>"
+    },
+    {
+      "id": "insertar-cert-falta-uso-servicio",
+      "marcador": "Insertar *1",
+      "descripcion": "Añadir certificado de puesta en marcha de servicio (anexos-certFaltaUsoServicio)",
+      "aplicableAutomaticamente": false
+    },
+    {
+      "id": "insertar-cert-anexo-xii",
+      "marcador": "Anexo XII",
+      "descripcion": "Añadir certificación secretario/a según Anexo XII (anexos-certAnexoXII)",
+      "aplicableAutomaticamente": false
+    }
+  ],
+  "reglasTexto": [
+    {
+      "id": "insertar-compromiso-corriente-pago",
+      "marcador": "Insertar *2",
+      "fieldId": "solicita-textoSolicitaDeclara",
+      "parrafoAnadir": "<div>En caso de resultar beneficiaria de la subvención, la entidad se compromete expresamente a que mantendrá el cumplimiento de la obligación de estar al corriente de obligaciones tributarias y frente a la Seguridad Social durante todo el procedimiento desde el inicio del proyecto y hasta su finalización.</div>",
+      "fragmentoDeteccion": "beneficiaria de la subvención"
+    },
+    {
+      "id": "eliminar-compromiso-contratacion",
+      "fieldId": "conceptoE2-V91523-control",
+      "descripcion": "Eliminar declaración de compromiso de contratación en concepto E2"
+    },
+    {
+      "id": "eliminar-notificacion-textos",
+      "camposEliminar": [
+        "notificacion-textoNoti-control",
+        "notificacion-textoNoti2-control"
+      ]
+    }
+  ],
+  "cambiosReferenciaCompletos": [
+    "declaracionesResponsables-inscritoROAC-control",
+    "declaracionesResponsables-textoinscritoROAC-control",
+    "declaracionesResponsables-plazosPago-control",
+    "declaracionesResponsables-textoplazosPago-control",
+    "permisosConsultaSufo-sufoid1-control",
+    "permisosConsultaSufo-textosufoid1-control",
+    "permisosConsultaSufo-textoOpongo-control",
+    "permisosConsultaSufo-sufoid26-control",
+    "permisosConsultaSufo-textosufoid26-control",
+    "anexos-acreditaTransporte-control",
+    "anexos-textoacreditaTransporte-control",
+    "anexos-certSegSocial-control",
+    "anexos-textocertSegSocial-control",
+    "anexos-certifSecretario-control",
+    "anexos-textocertifSecretario-control",
+    "conceptoE2-V91523-control",
+    "textos-eliminar_textoConceptoE2-control",
+    "notificacion-textoNoti-control",
+    "notificacion-textoNoti2-control"
+  ],
+  "altasReferencia": [
+    "anexos-certFaltaUsoServicio-control",
+    "anexos-textocertFaltaUsoServicio-control",
+    "anexos-certAnexoXII-control",
+    "anexos-textocertAnexoXII-control",
+    "anexos-cajatextootros-control",
+    "vinculadas-dCnae-control"
+  ]
+}

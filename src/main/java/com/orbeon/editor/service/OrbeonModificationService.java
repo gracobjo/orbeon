@@ -233,16 +233,23 @@ public class OrbeonModificationService {
                     Node sub = subs.item(k);
                     if (sub instanceof Element subEl && resourceType.equals(subEl.getLocalName())) {
                         subEl.setTextContent(newValue != null ? newValue : "");
-                        return resourceType + " de '" + fieldId + "' → " + newValue;
+                        return resourceType + " de '" + fieldId + "' → " + truncar(newValue);
                     }
                 }
                 Element nuevo = doc.createElementNS(el.getNamespaceURI(), resourceType);
                 nuevo.setTextContent(newValue != null ? newValue : "");
                 el.appendChild(nuevo);
-                return resourceType + " de '" + fieldId + "' creado: " + newValue;
+                return resourceType + " de '" + fieldId + "' creado: " + truncar(newValue);
             }
         }
         throw new IllegalArgumentException("Campo no encontrado en resources: " + fieldId);
+    }
+
+    private String truncar(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.length() > 80 ? value.substring(0, 77) + "..." : value;
     }
 
     @SuppressWarnings("unchecked")
@@ -252,10 +259,19 @@ public class OrbeonModificationService {
         if (bindEl == null) {
             throw new IllegalArgumentException("Bind no encontrado: " + bindId);
         }
+        if (Boolean.TRUE.equals(change.get("removeRelevant"))) {
+            bindEl.removeAttribute("relevant");
+            return "Relevant eliminado en bind: " + bindId;
+        }
         Map<String, Object> attribs = (Map<String, Object>) change.get("attributes");
         if (attribs != null) {
             for (Map.Entry<String, Object> e : attribs.entrySet()) {
-                bindEl.setAttribute(e.getKey(), String.valueOf(e.getValue()));
+                String val = String.valueOf(e.getValue());
+                if (val.isBlank()) {
+                    bindEl.removeAttribute(e.getKey());
+                } else {
+                    bindEl.setAttribute(e.getKey(), val);
+                }
             }
         }
         return "Bind actualizado: " + bindId;

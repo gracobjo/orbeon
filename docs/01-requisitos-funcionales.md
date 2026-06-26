@@ -142,6 +142,21 @@ Guía de usuario: [10-controles-genericos-y-busqueda-xml.md](10-controles-generi
 | RF-047 | `POST /api/formulario/analizar-logos` — inventario de logos con posición. | Media | Implementado |
 | RF-048 | `POST /api/formulario/analizar-calculadoras` — inventario de `xf:bind @calculate` con fuentes de datos. | Media | Implementado |
 | RF-049 | `POST /api/formulario/cumplimentar-instancia` — aplica preset o valores a `fr-form-instance` y devuelve XML reparseado. | Alta | Implementado |
+| RF-051 | `POST /api/formulario/analizar-instrucciones-pdf` — extrae anotaciones de un PDF de instrucciones, propone cambios XML según catálogo y opcionalmente los aplica. | Alta | Implementado |
+
+---
+
+## 5b. Análisis de PDF de instrucciones
+
+| ID | Requisito | Prioridad | Estado |
+|----|-----------|-----------|--------|
+| RF-055 | El sistema debe extraer anotaciones del margen de un PDF de instrucciones (OpenPDF). | Alta | Implementado |
+| RF-056 | El sistema debe traducir anotaciones a propuestas de cambio XML mediante un catálogo de reglas (`instrucciones-684-mapeo.json`). | Alta | Implementado |
+| RF-057 | Cada propuesta debe indicar si es aplicable automáticamente (**Auto**) o requiere revisión (**Revisar**) y un nivel de confianza (**alta** / **media**). | Media | Implementado |
+| RF-058 | Con `aplicar=true`, el sistema debe ejecutar en el XML solo las propuestas automáticas (`remove-field`, `update-resource`, `update-bind`, etc.). | Alta | Implementado |
+| RF-059 | La UI debe mostrar un modal con propuestas filtrables, leyenda de etiquetas y barra resumen tras el análisis. | Media | Implementado |
+
+Ver [11 — Análisis PDF instrucciones](11-analisis-pdf-instrucciones.md).
 
 ---
 

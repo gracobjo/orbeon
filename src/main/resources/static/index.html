@@ -21,7 +21,6 @@
         .code-area { font-family: 'Consolas', 'Monaco', 'Courier New', monospace; tab-size: 2; }
         .preview-input { pointer-events: none; }
         .preview-select { pointer-events: auto; cursor: pointer; }
-        #visorPdf { background: #525659; }
         .clickable-result { cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; }
         .clickable-result:hover { border-color: #2563eb; box-shadow: 0 0 0 1px #2563eb33; }
         #textareaXml::selection { background: #fbbf24; color: #1e293b; }
@@ -135,6 +134,31 @@
             0%, 15% { outline-color: #2563eb; background-color: #eef6ff !important; }
             100% { outline-color: transparent; }
         }
+        /* Barra PDF instrucciones: aspecto de panel de acciones, no texto suelto */
+        .pdf-instrucciones-toolbar {
+            border: 1px solid #c7d2fe;
+            box-shadow: 0 1px 2px rgba(67, 56, 202, 0.08);
+        }
+        .pdf-instrucciones-toolbar .pdf-instr-badge {
+            background: linear-gradient(180deg, #4f46e5 0%, #4338ca 100%);
+            color: #fff;
+            letter-spacing: 0.02em;
+        }
+        .pdf-instrucciones-toolbar .pdf-instr-file-btn {
+            background: #f8fafc;
+            border: 1px dashed #94a3b8;
+            color: #334155;
+        }
+        .pdf-instrucciones-toolbar .pdf-instr-file-btn:hover {
+            background: #eef2ff;
+            border-color: #6366f1;
+            color: #3730a3;
+        }
+        .pdf-instrucciones-toolbar .pdf-instr-apply {
+            background: #f1f5f9;
+            border-left: 1px solid #e2e8f0;
+            border-right: 1px solid #e2e8f0;
+        }
     </style>
 </head>
 <body class="bg-slate-100 min-h-screen flex flex-col">
@@ -152,17 +176,29 @@
         <input type="file" id="inputXml" accept=".xml,.txt" class="hidden">
     </label>
 
-    <label class="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-sm font-medium transition">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-        JSON modificaciones (opcional)
-        <input type="file" id="inputJsonMod" accept=".json" class="hidden">
-    </label>
-
-    <button id="btnExportar" disabled
-            class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium transition">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-        Exportar XML de Salida
-    </button>
+    <div class="pdf-instrucciones-toolbar flex items-stretch rounded-lg shrink-0 overflow-hidden"
+         title="Sube el PDF con anotaciones en margen; interpreta tachados y comentarios como cambios XML">
+        <div class="pdf-instr-badge flex items-center gap-1.5 px-3 py-2 text-xs font-semibold shrink-0">
+            <svg class="w-4 h-4 shrink-0 opacity-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+            <span class="hidden sm:inline">PDF instrucciones</span>
+            <span class="sm:hidden">PDF</span>
+        </div>
+        <label class="pdf-instr-file-btn cursor-pointer inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium shrink-0">
+            <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+            Elegir PDF
+            <input type="file" id="inputPdfInstrucciones" accept=".pdf,application/pdf" class="hidden">
+        </label>
+        <span id="nombrePdfInstrucciones" class="hidden md:inline self-center px-2 text-[10px] text-slate-500 max-w-[7rem] truncate">Sin archivo</span>
+        <label class="pdf-instr-apply flex items-center gap-1.5 px-3 py-2 text-xs text-slate-700 cursor-pointer whitespace-nowrap shrink-0"
+               title="Si está marcado, modifica el XML cargado. Si no, solo muestra el análisis en el modal.">
+            <input type="checkbox" id="chkAplicarInstruccionesPdf" class="rounded border-slate-400 text-indigo-600 focus:ring-indigo-500">
+            <span class="font-medium">Aplicar al XML</span>
+        </label>
+        <button type="button" id="btnAnalizarInstruccionesPdf"
+                class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition whitespace-nowrap shrink-0 border-l border-indigo-700/30">
+            Analizar
+        </button>
+    </div>
 
     <label id="labelComparar" class="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg text-sm font-medium transition opacity-40 pointer-events-none">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
@@ -170,12 +206,32 @@
         <input type="file" id="inputXmlComparar" accept=".xml,.txt" class="hidden">
     </label>
 
-    <button id="btnCompararDos" class="inline-flex items-center gap-2 px-4 py-2 bg-violet-100 hover:bg-violet-200 text-violet-800 rounded-lg text-sm font-medium transition">
+    <button id="btnCompararDos" type="button" class="inline-flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg text-sm font-medium transition shadow-sm border border-violet-700/40">
         Comparar 2 archivos…
+    </button>
+
+    <button id="btnExportar" disabled
+            class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium transition">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        Exportar XML de Salida
     </button>
 
     <span id="estado" class="ml-auto text-sm text-slate-500">Sin archivo cargado</span>
 </header>
+
+<!-- Resumen compacto análisis PDF (clic para ampliar) -->
+<div id="barraInstruccionesPdfResumen" class="hidden px-6 py-2 bg-amber-50 border-b border-amber-200 shrink-0 flex items-center gap-3 flex-wrap">
+    <div class="flex-1 min-w-0">
+        <p id="instruccionesPdfTitulo" class="text-xs font-semibold text-amber-900 truncate"></p>
+        <p id="instruccionesPdfSubtitulo" class="text-[11px] text-amber-800/80 truncate"></p>
+    </div>
+    <button type="button" id="btnAmpliarInstruccionesPdf"
+            class="px-3 py-1 text-xs font-medium bg-amber-600 hover:bg-amber-700 text-white rounded-md transition shrink-0">
+        Ver detalle
+    </button>
+    <button type="button" id="btnCerrarBarraInstruccionesPdf"
+            class="text-amber-600 hover:text-amber-900 text-lg leading-none px-1 shrink-0" title="Cerrar">×</button>
+</div>
 
 <!-- Contenedor principal: dos paneles simétricos -->
 <main class="flex-1 flex overflow-hidden p-4 gap-4">
@@ -427,22 +483,18 @@
         </div>
     </section>
 
-    <!-- Panel derecho: vista de diseño y PDF -->
+    <!-- Panel derecho: vista de diseño -->
     <section class="w-1/2 flex flex-col bg-white rounded-xl shadow border border-slate-200 overflow-hidden">
-        <nav class="flex border-b border-slate-200 bg-slate-50">
-            <button id="tabPreview" class="flex-1 py-2.5 text-sm text-center tab-active transition">Vista Diseño</button>
-            <button id="tabPdf" class="flex-1 py-2.5 text-sm text-center text-slate-500 hover:text-slate-700 transition">Vista PDF</button>
-        </nav>
+        <div class="px-4 py-2.5 border-b border-slate-200 bg-slate-50 shrink-0">
+            <h2 class="text-sm font-semibold text-slate-700">Vista diseño</h2>
+            <p class="text-[11px] text-slate-400 mt-0.5">Simulación HTML del formulario según los componentes activos</p>
+        </div>
 
-        <!-- Mock WYSIWYG -->
         <div id="panelPreview" class="flex-1 flex flex-col overflow-hidden">
             <div id="bannerPreviewBorrador" class="hidden px-4 py-2 bg-amber-100 border-b border-amber-200 text-amber-900 text-xs flex flex-wrap items-center justify-center gap-2 shrink-0">
                 <span>Vista previa con cambios <strong>sin guardar</strong> en el XML</span>
                 <button type="button" id="bannerAplicarBorrador" class="px-2 py-0.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[11px]">Aplicar al XML</button>
                 <button type="button" id="bannerDescartarBorrador" class="px-2 py-0.5 bg-white border border-amber-300 hover:bg-amber-50 rounded text-[11px]">Descartar</button>
-            </div>
-            <div class="px-4 py-2 border-b border-slate-100 shrink-0">
-                <p class="text-xs text-slate-400">Simulación HTML del formulario según los componentes activos</p>
             </div>
             <div id="previewFormulario" class="flex-1 overflow-y-auto p-6 bg-gradient-to-b from-white to-slate-50">
                 <div id="previewVacio" class="text-center py-16 text-slate-300">
@@ -454,39 +506,6 @@
                 </div>
                 <div id="previewContenido" class="hidden max-w-2xl mx-auto space-y-4"></div>
             </div>
-        </div>
-
-        <!-- Visor PDF embebido -->
-        <div id="panelPdf" class="flex-1 flex flex-col hidden overflow-hidden">
-            <div class="px-4 py-2 border-b border-slate-100 flex items-center justify-between gap-2">
-                <p class="text-xs text-slate-400">Impreso al estilo formulario JCYL (rejillas, secciones y datos de instancia; excluye <code class="text-slate-500">noprintinpdf</code>)</p>
-                <div class="flex gap-2">
-                    <button id="btnCumplimentarEjemplo" disabled
-                            class="px-3 py-1 text-xs bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white rounded-md transition"
-                            title="Rellena fr-form-instance con el ejemplo del PDF Instrucciones 684">
-                        Cumplimentar ejemplo
-                    </button>
-                    <button id="btnRefrescarPdf" disabled
-                            class="px-3 py-1 text-xs bg-orbeon-500 hover:bg-orbeon-600 disabled:opacity-40 text-white rounded-md transition">
-                        Actualizar PDF
-                    </button>
-                    <button id="btnDescargarPdf" disabled
-                            class="px-3 py-1 text-xs bg-slate-200 hover:bg-slate-300 disabled:opacity-40 text-slate-700 rounded-md transition">
-                        Descargar
-                    </button>
-                </div>
-            </div>
-            <div id="pdfVacio" class="flex-1 flex items-center justify-center text-slate-400 text-sm">
-                Carga un XML para generar la vista PDF
-            </div>
-            <div id="pdfCargando" class="hidden flex-1 flex items-center justify-center text-slate-500 text-sm">
-                <svg class="animate-spin h-5 w-5 mr-2 text-orbeon-500" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                </svg>
-                Generando PDF...
-            </div>
-            <iframe id="visorPdf" class="hidden flex-1 w-full border-0" title="Vista previa PDF"></iframe>
         </div>
     </section>
 </main>
@@ -537,6 +556,56 @@
     </div>
 </div>
 
+<!-- Modal análisis PDF instrucciones -->
+<div id="modalInstruccionesPdf" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/40" id="modalInstruccionesPdfFondo"></div>
+    <div class="absolute inset-4 md:inset-8 lg:inset-12 bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden max-w-5xl mx-auto">
+        <div class="px-6 py-4 border-b border-slate-200 flex items-start justify-between gap-4 bg-amber-50 shrink-0">
+            <div class="min-w-0">
+                <h2 class="text-lg font-semibold text-slate-800">Análisis PDF de instrucciones</h2>
+                <p id="modalInstruccionesPdfMeta" class="text-xs text-slate-600 mt-1"></p>
+                <p class="text-[11px] text-slate-500 mt-2 max-w-2xl">
+                    Las anotaciones del margen se traducen a cambios sobre el XML Orbeon.
+                    <strong>Aplicar al XML</strong> ejecuta esos cambios en la plantilla cargada (quitar controles del view, actualizar textos en resources, etc.).
+                </p>
+            </div>
+            <button type="button" id="cerrarModalInstruccionesPdf" class="text-slate-400 hover:text-slate-600 text-2xl leading-none shrink-0">&times;</button>
+        </div>
+        <div class="px-6 py-3 border-b border-slate-100 bg-slate-50 text-[11px] text-slate-600 shrink-0">
+            <p class="font-semibold text-slate-700 mb-2">Significado de las etiquetas</p>
+            <div class="grid sm:grid-cols-2 gap-x-6 gap-y-2">
+                <div class="flex items-start gap-2">
+                    <span class="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-emerald-800">Auto</span>
+                    <span>Se puede aplicar al XML sin revisión: el campo y el cambio están definidos en el catálogo del formulario.</span>
+                </div>
+                <div class="flex items-start gap-2">
+                    <span class="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-200 text-amber-900">Revisar</span>
+                    <span>No se aplica solo: hay que comprobarlo (p. ej. altas de controles nuevos copiando del XML objetivo).</span>
+                </div>
+                <div class="flex items-start gap-2">
+                    <span class="shrink-0 px-1.5 py-0.5 rounded text-[10px] bg-slate-200 text-slate-700">alta</span>
+                    <span><strong>Confianza alta</strong> — Correspondencia directa entre la anotación del PDF y el campo XML (ID o texto del catálogo).</span>
+                </div>
+                <div class="flex items-start gap-2">
+                    <span class="shrink-0 px-1.5 py-0.5 rounded text-[10px] bg-slate-200 text-slate-700">media</span>
+                    <span><strong>Confianza media</strong> — Correspondencia inferida (texto parcial, proximidad en el PDF o regla genérica). Verifique el campo afectado.</span>
+                </div>
+            </div>
+        </div>
+        <div id="modalInstruccionesPdfResumen" class="px-6 py-3 border-b border-slate-100 bg-white text-sm text-slate-700 shrink-0"></div>
+        <div class="px-6 py-2 border-b border-slate-100 flex flex-wrap gap-2 shrink-0">
+            <button type="button" data-filtro-instr="TODOS" class="filtro-instr px-3 py-1 text-xs rounded-full bg-slate-800 text-white">Todos</button>
+            <button type="button" data-filtro-instr="automatico" class="filtro-instr px-3 py-1 text-xs rounded-full bg-slate-100 text-slate-700">Automáticos</button>
+            <button type="button" data-filtro-instr="manual" class="filtro-instr px-3 py-1 text-xs rounded-full bg-slate-100 text-slate-700">Revisión manual</button>
+        </div>
+        <div id="modalInstruccionesPdfLista" class="flex-1 overflow-y-auto px-6 py-4 space-y-3 min-h-0"></div>
+        <div id="modalInstruccionesPdfAplicados" class="hidden border-t border-emerald-200 bg-emerald-50 px-6 py-3 max-h-40 overflow-y-auto shrink-0">
+            <p class="text-xs font-semibold text-emerald-900 mb-1">Cambios aplicados al XML</p>
+            <ul id="modalInstruccionesPdfAplicadosLista" class="text-[11px] text-emerald-900 space-y-0.5 font-mono"></ul>
+        </div>
+    </div>
+</div>
+
 <script>
     const API = '/api/formulario';
     let componentes = [];
@@ -546,9 +615,6 @@
     let changeLog = [];
     let filtroLista = '';
     let filtroSecciones = '';
-    let pdfBlobUrl = null;
-    let pdfDebounceTimer = null;
-    let tabPreviewActiva = true;
     let comparacionActual = null;
     let filtroComparacion = 'TODOS';
     let filtroDesplegable = '';
@@ -561,6 +627,8 @@
     let controlesGenericos = [];
     let filtroControlesGenericos = '';
     let calculadoraEditandoId = null;
+    let ultimoAnalisisInstruccionesPdf = null;
+    let filtroInstruccionesPdf = 'TODOS';
 
     const TIPO_VISIBILIDAD = {
         siempre_visible: { label: 'Siempre visible', cls: 'bg-slate-100 text-slate-600' },
@@ -1324,7 +1392,6 @@
             renderizarDependencias();
             renderizarCalculadoras();
             activarBannerPreview(true);
-            cambiarTabPreview('preview');
             mostrarToast('Vista previa actualizada — pulse Aplicar al XML para guardar', 'ok');
         } catch (err) {
             mostrarToast('Error en previsualización: ' + err.message, 'error');
@@ -1527,9 +1594,6 @@
 
     function habilitarExportacion(habilitar) {
         $('#btnExportar').disabled = !habilitar;
-        $('#btnCumplimentarEjemplo').disabled = !habilitar;
-        $('#btnRefrescarPdf').disabled = !habilitar;
-        $('#btnDescargarPdf').disabled = !habilitar;
         const label = $('#labelComparar');
         if (habilitar) {
             label.classList.remove('opacity-40', 'pointer-events-none');
@@ -1606,23 +1670,6 @@
         }
     });
 
-    /* --- Pestañas panel derecho (Diseño / PDF) --- */
-    $('#tabPreview').addEventListener('click', () => cambiarTabPreview('preview'));
-    $('#tabPdf').addEventListener('click', () => cambiarTabPreview('pdf'));
-
-    function cambiarTabPreview(tab) {
-        tabPreviewActiva = tab === 'preview';
-        $('#panelPreview').classList.toggle('hidden', !tabPreviewActiva);
-        $('#panelPdf').classList.toggle('hidden', tabPreviewActiva);
-        $('#tabPreview').classList.toggle('tab-active', tabPreviewActiva);
-        $('#tabPdf').classList.toggle('tab-active', !tabPreviewActiva);
-        $('#tabPreview').classList.toggle('text-slate-500', !tabPreviewActiva);
-        $('#tabPdf').classList.toggle('text-slate-500', tabPreviewActiva);
-        if (!tabPreviewActiva && xmlActual) {
-            generarVistaPdf();
-        }
-    }
-
     /* --- Renderizado del panel guiado --- */
     function renderizarComponentes() {
         const lista = $('#listaComponentes');
@@ -1691,7 +1738,6 @@
                     componentes[idx][campo] = e.target.value;
                 }
                 renderizarPreview();
-                programarActualizacionPdf();
             });
         });
     }
@@ -1841,107 +1887,6 @@
             mostrarToast(`${(data.changeLog || []).length} cambios procesados`, 'ok');
         } catch (err) {
             mostrarToast('Error: ' + err.message, 'error');
-        }
-    });
-
-    function programarActualizacionPdf() {
-        if (!xmlActual) return;
-        clearTimeout(pdfDebounceTimer);
-        pdfDebounceTimer = setTimeout(() => {
-            if (!tabPreviewActiva) {
-                generarVistaPdf();
-            }
-        }, 900);
-    }
-
-    /* --- Cumplimentar instancia de ejemplo --- */
-    async function cumplimentarEjemploInstrucciones() {
-        const xml = $('#textareaXml').value || xmlActual;
-        if (!xml.trim()) return;
-
-        $('#btnCumplimentarEjemplo').disabled = true;
-        try {
-            const res = await fetch(`${API}/cumplimentar-instancia`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ xml, preset: 'instrucciones-684' })
-            });
-            if (!res.ok) {
-                const err = await res.json().catch(() => ({}));
-                let msg = err.error || res.statusText;
-                if (res.status === 404) {
-                    msg = 'Endpoint no disponible (404). Reinicia la app con arrancar.cmd para cargar la ultima version.';
-                }
-                throw new Error(msg);
-            }
-            const data = await res.json();
-            procesarRespuesta(data, false);
-            mostrarToast('Instancia cumplimentada con ejemplo 684 Instrucciones', 'ok');
-            if (!tabPreviewActiva) {
-                await generarVistaPdf();
-            }
-        } catch (err) {
-            mostrarToast('Error al cumplimentar: ' + err.message, 'error');
-        } finally {
-            $('#btnCumplimentarEjemplo').disabled = false;
-        }
-    }
-
-    $('#btnCumplimentarEjemplo').addEventListener('click', () => cumplimentarEjemploInstrucciones());
-
-    /* --- Generación y visualización PDF --- */
-    async function generarVistaPdf() {
-        const xml = $('#textareaXml').value || xmlActual;
-        if (!xml.trim()) return;
-
-        $('#pdfVacio').classList.add('hidden');
-        $('#pdfCargando').classList.remove('hidden');
-        $('#visorPdf').classList.add('hidden');
-
-        const mods = jsonModificacionesExterno || componentes;
-
-        try {
-            const res = await fetch(`${API}/vista-pdf`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ xml, componentes: mods })
-            });
-            if (!res.ok) {
-                const err = await res.json().catch(() => ({}));
-                throw new Error(err.error || res.statusText);
-            }
-            const blob = await res.blob();
-            if (pdfBlobUrl) URL.revokeObjectURL(pdfBlobUrl);
-            pdfBlobUrl = URL.createObjectURL(blob);
-
-            const iframe = $('#visorPdf');
-            iframe.src = pdfBlobUrl;
-            $('#pdfCargando').classList.add('hidden');
-            iframe.classList.remove('hidden');
-        } catch (err) {
-            $('#pdfCargando').classList.add('hidden');
-            $('#pdfVacio').classList.remove('hidden');
-            $('#pdfVacio').textContent = 'Error al generar PDF: ' + err.message;
-            mostrarToast('Error PDF: ' + err.message, 'error');
-        }
-    }
-
-    $('#btnRefrescarPdf').addEventListener('click', () => generarVistaPdf());
-
-    $('#btnDescargarPdf').addEventListener('click', async () => {
-        if (pdfBlobUrl) {
-            const a = document.createElement('a');
-            a.href = pdfBlobUrl;
-            a.download = 'orbeon_formulario_vista.pdf';
-            a.click();
-            return;
-        }
-        await generarVistaPdf();
-        if (pdfBlobUrl) {
-            const a = document.createElement('a');
-            a.href = pdfBlobUrl;
-            a.download = 'orbeon_formulario_vista.pdf';
-            a.click();
         }
     });
 
@@ -2097,9 +2042,6 @@
         renderizarDependencias();
         renderizarCalculadoras();
         renderizarControlesGenericos();
-        if (!tabPreviewActiva) {
-            generarVistaPdf();
-        }
         if (xmlActual && (!calculadoras || !calculadoras.elementos?.length)) {
             cargarCalculadorasDesdeApi();
         }
@@ -2920,6 +2862,173 @@
     }
 
     $('#btnEnviarAsistente').addEventListener('click', ejecutarAsistente);
+
+    function etiquetaConfianzaInstrucciones(confianza) {
+        const c = (confianza || '').toLowerCase();
+        const mapa = {
+            alta: {
+                texto: 'alta',
+                titulo: 'Confianza alta: correspondencia directa entre la anotación del PDF y el campo XML del catálogo.'
+            },
+            media: {
+                texto: 'media',
+                titulo: 'Confianza media: correspondencia inferida; conviene verificar el campo afectado antes de aplicar.'
+            },
+            baja: {
+                texto: 'baja',
+                titulo: 'Confianza baja: coincidencia débil; revise manualmente si el cambio es correcto.'
+            }
+        };
+        return mapa[c] || { texto: confianza || '—', titulo: 'Nivel de confianza de la propuesta' };
+    }
+
+    function renderizarModalInstruccionesPdf(data, aplicado = false) {
+        ultimoAnalisisInstruccionesPdf = data;
+        const auto = (data.propuestas || []).filter(p => p.aplicableAutomaticamente).length;
+        const manual = (data.propuestas || []).length - auto;
+        $('#modalInstruccionesPdfMeta').textContent =
+            `${data.nombrePdf || 'PDF'} · ${data.totalAnotaciones} anotaciones · ${data.cambiosAgregados?.length || 0} cambios XML propuestos (${auto} auto, ${manual} manual)`;
+        $('#modalInstruccionesPdfResumen').textContent = data.resumen || '';
+
+        const lista = $('#modalInstruccionesPdfLista');
+        lista.innerHTML = '';
+        const propuestas = (data.propuestas || []).filter(p => {
+            if (filtroInstruccionesPdf === 'automatico') return p.aplicableAutomaticamente;
+            if (filtroInstruccionesPdf === 'manual') return !p.aplicableAutomaticamente;
+            return true;
+        });
+        if (!propuestas.length) {
+            lista.innerHTML = '<p class="text-slate-400 text-sm text-center py-8">Sin propuestas para este filtro</p>';
+        } else {
+            propuestas.forEach(p => {
+                const card = document.createElement('div');
+                const esManual = !p.aplicableAutomaticamente;
+                const conf = etiquetaConfianzaInstrucciones(p.confianza);
+                card.className = `border rounded-lg p-3 text-xs ${esManual ? 'border-amber-300 bg-amber-50/50' : 'border-slate-200 bg-slate-50/50'}`;
+                const campos = (p.camposAfectados || []).map(c => `<code class="text-[10px] bg-white px-1 rounded">${escaparHtml(c)}</code>`).join(' ');
+                card.innerHTML = `
+                    <div class="flex items-center gap-2 mb-1 flex-wrap">
+                        <span class="px-1.5 py-0.5 rounded text-[10px] font-medium ${esManual ? 'bg-amber-200 text-amber-900' : 'bg-emerald-100 text-emerald-800'}"
+                              title="${esManual ? 'Revisar: no se aplica automáticamente; requiere comprobación manual.' : 'Auto: se puede aplicar al XML sin revisión previa.'}">${esManual ? 'Revisar' : 'Auto'}</span>
+                        <span class="px-1.5 py-0.5 rounded text-[10px] bg-slate-200 text-slate-700" title="${escaparHtml(conf.titulo)}">${escaparHtml(conf.texto)}</span>
+                        ${p.pagina ? `<span class="text-slate-400">pág. ${p.pagina}</span>` : ''}
+                    </div>
+                    <p class="font-medium text-slate-800">${escaparHtml(p.descripcion || p.intencion || '')}</p>
+                    ${p.textoInstruccion ? `<p class="text-slate-500 mt-1 italic">«${escaparHtml(p.textoInstruccion)}»</p>` : ''}
+                    ${campos ? `<div class="mt-2 flex flex-wrap gap-1">${campos}</div>` : ''}
+                    ${p.nota ? `<p class="mt-1 text-amber-800">${escaparHtml(p.nota)}</p>` : ''}`;
+                lista.appendChild(card);
+            });
+        }
+
+        const panelAplicados = $('#modalInstruccionesPdfAplicados');
+        const logs = data.logAplicados || [];
+        if (aplicado && logs.length) {
+            panelAplicados.classList.remove('hidden');
+            $('#modalInstruccionesPdfAplicadosLista').innerHTML = logs
+                .map(l => `<li>${escaparHtml(l)}</li>`).join('');
+        } else {
+            panelAplicados.classList.add('hidden');
+        }
+    }
+
+    function abrirModalInstruccionesPdf(data, aplicado = false) {
+        renderizarModalInstruccionesPdf(data, aplicado);
+        $('#modalInstruccionesPdf').classList.remove('hidden');
+    }
+
+    function cerrarModalInstruccionesPdf() {
+        $('#modalInstruccionesPdf').classList.add('hidden');
+    }
+
+    $('#cerrarModalInstruccionesPdf')?.addEventListener('click', cerrarModalInstruccionesPdf);
+    $('#modalInstruccionesPdfFondo')?.addEventListener('click', cerrarModalInstruccionesPdf);
+    $('#btnAmpliarInstruccionesPdf')?.addEventListener('click', () => {
+        if (ultimoAnalisisInstruccionesPdf) abrirModalInstruccionesPdf(ultimoAnalisisInstruccionesPdf, !!ultimoAnalisisInstruccionesPdf.logAplicados?.length);
+    });
+    $('#btnCerrarBarraInstruccionesPdf')?.addEventListener('click', () => {
+        $('#barraInstruccionesPdfResumen')?.classList.add('hidden');
+    });
+    document.querySelectorAll('.filtro-instr').forEach(btn => {
+        btn.addEventListener('click', () => {
+            filtroInstruccionesPdf = btn.dataset.filtroInstr;
+            document.querySelectorAll('.filtro-instr').forEach(b => {
+                const on = b.dataset.filtroInstr === filtroInstruccionesPdf;
+                b.classList.toggle('bg-slate-800', on);
+                b.classList.toggle('text-white', on);
+                b.classList.toggle('bg-slate-100', !on);
+                b.classList.toggle('text-slate-700', !on);
+            });
+            if (ultimoAnalisisInstruccionesPdf) renderizarModalInstruccionesPdf(ultimoAnalisisInstruccionesPdf, !!ultimoAnalisisInstruccionesPdf.logAplicados?.length);
+        });
+    });
+
+    async function analizarInstruccionesPdf() {
+        const input = $('#inputPdfInstrucciones');
+        const file = input.files?.[0];
+        if (!file) {
+            mostrarToast('Selecciona un PDF de instrucciones', 'error');
+            return;
+        }
+        if (!xmlActual) {
+            mostrarToast('Carga primero el XML del formulario', 'error');
+            return;
+        }
+        const aplicar = $('#chkAplicarInstruccionesPdf').checked;
+        const formData = new FormData();
+        formData.append('pdf', file);
+        formData.append('xml', xmlActual);
+        formData.append('aplicar', aplicar ? 'true' : 'false');
+        try {
+            mostrarToast('Analizando anotaciones del PDF…', 'info');
+            const res = await fetch(`${API}/analizar-instrucciones-pdf`, { method: 'POST', body: formData });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.error || res.statusText);
+            }
+            const data = await res.json();
+            const nProp = data.propuestas?.length || 0;
+            const nCambios = data.cambiosAgregados?.length || 0;
+            $('#instruccionesPdfTitulo').textContent =
+                `${data.totalAnotaciones} anotaciones → ${nProp} propuestas (${nCambios} cambios XML)`;
+            $('#instruccionesPdfSubtitulo').textContent = aplicar
+                ? 'Cambios aplicados al XML. Pulse «Ver detalle» para revisar.'
+                : 'Análisis sin aplicar. Marque «Aplicar al XML» y vuelva a analizar para modificar la plantilla.';
+            $('#barraInstruccionesPdfResumen')?.classList.remove('hidden');
+            abrirModalInstruccionesPdf(data, false);
+            if (aplicar && data.xml) {
+                data.logAplicados = data.logAplicados || [];
+                const sync = await sincronizarXml(data.xml);
+                procesarRespuesta(sync, false);
+                if (data.logAplicados.length) {
+                    changeLog.push(...data.logAplicados.map(l => '✓ ' + l));
+                    renderizarChangelog();
+                }
+                renderizarModalInstruccionesPdf(data, true);
+                mostrarToast(`${data.logAplicados.length || nCambios} cambios aplicados al XML`, 'ok');
+            } else {
+                mostrarToast(`${nProp} propuestas · ${nCambios} cambios propuestos (sin aplicar)`, 'ok');
+            }
+        } catch (err) {
+            mostrarToast('Error PDF instrucciones: ' + err.message, 'error');
+        }
+    }
+
+    $('#btnAnalizarInstruccionesPdf')?.addEventListener('click', analizarInstruccionesPdf);
+    $('#inputPdfInstrucciones')?.addEventListener('change', (e) => {
+        const nombre = e.target.files?.[0]?.name;
+        const el = $('#nombrePdfInstrucciones');
+        if (!el) return;
+        if (nombre) {
+            el.textContent = nombre;
+            el.classList.remove('hidden');
+            el.classList.add('md:inline');
+            el.title = nombre;
+        } else {
+            el.textContent = 'Sin archivo';
+        }
+    });
+
     $('#inputAsistente').addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) ejecutarAsistente();
     });
@@ -2960,25 +3069,6 @@
             mostrarToast(`XML cargado: ${componentes.length} componentes detectados`, 'ok');
         } catch (err) {
             mostrarToast('Error: ' + err.message, 'error');
-        }
-        e.target.value = '';
-    });
-
-    /* --- JSON modificaciones externo --- */
-    $('#inputJsonMod').addEventListener('change', async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        try {
-            const texto = await file.text();
-            jsonModificacionesExterno = JSON.parse(texto);
-            const n = jsonModificacionesExterno.changes?.length ?? (Array.isArray(jsonModificacionesExterno) ? jsonModificacionesExterno.length : 0);
-            mostrarToast(`JSON cargado (${n} entradas)`, 'ok');
-            if (jsonModificacionesExterno.changes) {
-                $('#jsonEditor').value = JSON.stringify(jsonModificacionesExterno, null, 2);
-            }
-        } catch (err) {
-            jsonModificacionesExterno = null;
-            mostrarToast('JSON inválido', 'error');
         }
         e.target.value = '';
     });

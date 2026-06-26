@@ -3,6 +3,7 @@ package com.orbeon.editor.controller;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.orbeon.editor.dto.AnalisisInstruccionesResponse;
 import com.orbeon.editor.dto.CumplimentarInstanciaRequest;
 import com.orbeon.editor.dto.ComparacionResponse;
 import com.orbeon.editor.dto.FormularioResponse;
@@ -18,6 +19,7 @@ import com.orbeon.editor.model.AnalisisCalculadoras;
 import com.orbeon.editor.model.AnalisisDependencias;
 import com.orbeon.editor.model.ResultadoCumplimentacion;
 import com.orbeon.editor.service.OrbeonCalculatorService;
+import com.orbeon.editor.service.OrbeonInstructionsInterpreterService;
 import com.orbeon.editor.service.OrbeonInstanceService;
 import com.orbeon.editor.service.OrbeonCompareService;
 import com.orbeon.editor.service.OrbeonDependencyService;
@@ -62,6 +64,7 @@ public class FormularioController {
     private final OrbeonDependencyService dependencyService;
     private final OrbeonCalculatorService calculatorService;
     private final OrbeonInstanceService instanceService;
+    private final OrbeonInstructionsInterpreterService instructionsInterpreterService;
     private final ObjectMapper objectMapper;
 
     public FormularioController(OrbeonFormService orbeonFormService,
@@ -74,6 +77,7 @@ public class FormularioController {
                                 OrbeonDependencyService dependencyService,
                                 OrbeonCalculatorService calculatorService,
                                 OrbeonInstanceService instanceService,
+                                OrbeonInstructionsInterpreterService instructionsInterpreterService,
                                 ObjectMapper objectMapper) {
         this.orbeonFormService = orbeonFormService;
         this.orbeonStructureService = orbeonStructureService;
@@ -85,6 +89,7 @@ public class FormularioController {
         this.dependencyService = dependencyService;
         this.calculatorService = calculatorService;
         this.instanceService = instanceService;
+        this.instructionsInterpreterService = instructionsInterpreterService;
         this.objectMapper = objectMapper;
     }
 
@@ -315,6 +320,31 @@ public class FormularioController {
             merged.putAll(request.getEtiquetas());
         }
         return merged;
+    }
+
+    @PostMapping(value = "/analizar-instrucciones-pdf", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public AnalisisInstruccionesResponse analizarInstruccionesPdf(
+            @RequestParam("pdf") MultipartFile pdf,
+            @RequestParam("xml") String xml,
+            @RequestParam(value = "aplicar", defaultValue = "false") boolean aplicar) {
+        if (pdf == null || pdf.isEmpty()) {
+            throw new IllegalArgumentException("El PDF de instrucciones es obligatorio");
+        }
+        if (xml == null || xml.isBlank()) {
+            throw new IllegalArgumentException("El XML del formulario es obligatorio");
+        }
+        try {
+            return instructionsInterpreterService.analizar(
+                    pdf.getBytes(),
+                    pdf.getOriginalFilename() != null ? pdf.getOriginalFilename() : "instrucciones.pdf",
+                    xml,
+                    aplicar
+            );
+        } catch (IllegalArgumentException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Error al analizar instrucciones PDF: " + e.getMessage(), e);
+        }
     }
 
     @PostMapping(value = "/analizar-logos", consumes = MediaType.APPLICATION_JSON_VALUE)

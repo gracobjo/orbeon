@@ -18,6 +18,7 @@ Parsear plantillas **Orbeon Form Runner** (XHTML + XForms + extensiones `fr:`) p
 3. Aplicar modificaciones al DOM XML.
 4. Comparar dos versiones y generar PDF aproximado.
 5. Interpretar instrucciones en lenguaje natural (español), analizar logos y calculadoras XForms.
+6. Traducir anotaciones de PDF de instrucciones a cambios XML (catálogo 684/480).
 
 **APIs externas:** el backend no llama servicios HTTP externos. Ver [05-apis-externas.md](05-apis-externas.md).
 
@@ -40,7 +41,8 @@ Parsear plantillas **Orbeon Form Runner** (XHTML + XForms + extensiones `fr:`) p
  OrbeonCompareService   OrbeonPdfService
  OrbeonLogoService   OrbeonNaturalLanguageService
  OrbeonDependencyService   OrbeonCalculatorService
- OrbeonInstanceService
+ OrbeonInstanceService   OrbeonPdfInstructionsService
+ OrbeonInstructionsInterpreterService
                            │
      ┌─────────────────────┴─────────────────────┐
      ▼                     ▼                     ▼
@@ -72,7 +74,9 @@ orbeon/
     │   │   ├── service/           ← Lógica de negocio (incl. OrbeonInstanceService)
     │   │   └── util/              ← Parseo XML y recursos
     │   └── resources/
-    │       ├── datos/             ← Presets de instancia (instrucciones-684)
+    │       ├── datos/             ← Presets de instancia y catálogo PDF instrucciones
+│       │   ├── instancia-ejemplo-instrucciones-684.json
+│       │   └── instrucciones-684-mapeo.json
     │       └── static/
     │       └── index.html         ← UI principal
     └── test/
@@ -199,13 +203,33 @@ Ver [07 — Dependencias de secciones](07-dependencias-secciones.md).
 
 Ver [09 — Calculadoras XForms](09-calculadoras-xforms.md).
 
-### 4.7 `OrbeonCompareService`
+### 4.7 `OrbeonPdfInstructionsService`
+
+Extrae **anotaciones del margen** de un PDF de instrucciones usando OpenPDF (`PdfReader`, anotaciones de página).
+
+| Método | Descripción |
+|--------|-------------|
+| `extraerAnotaciones(byte[] pdf)` | `List<AnotacionInstruccionPdf>` con página, contenido, subtipo y posición |
+
+### 4.8 `OrbeonInstructionsInterpreterService`
+
+Traduce anotaciones + XML a **propuestas de cambio** usando el catálogo `instrucciones-684-mapeo.json`.
+
+| Método | Descripción |
+|--------|-------------|
+| `analizar(pdfBytes, nombrePdf, xml, aplicar)` | `AnalisisInstruccionesResponse` con propuestas; si `aplicar`, delega en `OrbeonModificationService` |
+
+**Modelo:** `PropuestaCambioXml` — `confianza` (`alta`/`media`), `aplicableAutomaticamente`, `cambios[]`, `camposAfectados[]`.
+
+Ver [11 — Análisis PDF instrucciones](11-analisis-pdf-instrucciones.md).
+
+### 4.9 `OrbeonCompareService`
 
 Compara dos listas de componentes indexadas por `id`. Estados: `ANADIDO`, `ELIMINADO`, `MODIFICADO`. Campos comparados: label, hint, alert, tipo, appearance.
 
 Además detecta etiquetas genéricas `control-N` en cada XML y reporta en `ComparacionResponse`: listas base/nuevo, añadidas y eliminadas entre versiones.
 
-### 4.8 `OrbeonPdfService`
+### 4.10 `OrbeonPdfService`
 
 Genera PDF al **estilo impreso JCYL / Orbeon Form Runner** (referencia: `684 F1b Mixto - 480 Solicitud_Instrucciones.pdf`):
 
@@ -222,7 +246,7 @@ Genera PDF al **estilo impreso JCYL / Orbeon Form Runner** (referencia: `684 F1b
 
 **No** invoca Orbeon Server ni incrusta logos binarios.
 
-### 4.9 `OrbeonInstanceService`
+### 4.11 `OrbeonInstanceService`
 
 Cumplimenta nodos hoja de `fr-form-instance` y recalcula campos derivados para coherencia con el PDF.
 
@@ -235,7 +259,7 @@ Cumplimenta nodos hoja de `fr-form-instance` y recalcula campos derivados para c
 
 **Preset incluido:** `instrucciones-684` — Ayuntamiento de El Barco de Ávila (`P0502100A`).
 
-### 4.10 `OrbeonLogoService`
+### 4.12 `OrbeonLogoService`
 
 Detecta logos/imágenes (`fr:image`, adjuntos en instancia) y calcula **posición global**, **posición en sección**, `controlId`, `sectionId`, `filename`, `src`.
 
@@ -244,7 +268,7 @@ Detecta logos/imágenes (`fr:image`, adjuntos en instancia) y calcula **posició
 | `analizarLogos(xml)` | `List<LogoEnFormulario>` |
 | `describirLogos(xml)` | Texto legible para el asistente NL |
 
-### 4.11 `OrbeonNaturalLanguageService`
+### 4.13 `OrbeonNaturalLanguageService`
 
 Parser de **reglas en español** (sin LLM). Traduce instrucciones a `changes[]` o consultas.
 
@@ -423,6 +447,14 @@ Diagrama: [diagramas/clases-dominio.puml](diagramas/clases-dominio.puml)
   ]
 }
 ```
+
+### POST `/analizar-instrucciones-pdf`
+
+**multipart:** `pdf` (archivo), `xml` (texto), `aplicar` (boolean, opcional)
+
+**Respuesta:** `AnalisisInstruccionesResponse` — `propuestas[]` con `confianza`, `aplicableAutomaticamente`, `cambios[]`; si `aplicar=true`, incluye `xml` modificado y `logAplicados[]`.
+
+Ver [11 — Análisis PDF instrucciones](11-analisis-pdf-instrucciones.md).
 
 ### GET `/esquema-modificaciones`
 
