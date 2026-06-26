@@ -11,7 +11,7 @@ Editor visual de plantillas XML de **Orbeon Form Runner** para lectura, edición
 | [03 — Casos de uso](03-casos-de-uso.md) | Actores, flujos y escenarios (CU-xxx) |
 | [04 — Documentación de desarrollador](04-documentacion-desarrollador.md) | Arquitectura, API REST, modelo de datos, despliegue |
 | [05 — APIs y dependencias externas](05-apis-externas.md) | Qué servicios usa o referencia la aplicación (JCYL, CDN, etc.) |
-| [06 — HOWTO arranque y CRUD](06-howto-arranque-y-crud.md) | Cómo arrancar el servidor y hacer CRUD (labels, hints, desplegables…) |
+| [06 — HOWTO arranque y CRUD](06-howto-arranque-y-crud.md) | Arranque, Tomcat embebido, JAR portable, CRUD de labels/hints |
 | [07 — Dependencias de secciones](07-dependencias-secciones.md) | Visibilidad condicional (`relevant`), pestaña Dependencias y CRUD |
 | [08 — Editor CRUD contextual y preview](08-editor-crud-contextual-y-preview.md) | Clic en resultados → XML + CRUD + previsualizar antes de guardar |
 | [09 — Calculadoras XForms](09-calculadoras-xforms.md) | `xf:bind @calculate`: inventario, tipos y edición en plantilla 684/480 |
@@ -28,16 +28,16 @@ Editor visual de plantillas XML de **Orbeon Form Runner** para lectura, edición
 
 ## Inicio rápido
 
-**Windows (recomendado):** doble clic en `arrancar.cmd` en la raíz del proyecto.
+**Windows (desarrollo):** doble clic en `arrancar.cmd` (Maven en `.tools`).
+
+**Windows (solo JAR, otro equipo):** compile el JAR, copie `arrancar-jar.cmd` y opcionalmente un JRE 17 portable en `jre\`. Ver [06 — HOWTO](06-howto-arranque-y-crud.md#parte-1--arrancar-el-servidor).
 
 ```bash
 mvn spring-boot:run
 # Abrir http://localhost:8080
 ```
 
-> Si Maven no está en el PATH, use `arrancar.cmd` (Maven empaquetado en `.tools/apache-maven-3.9.16`) o la ruta completa indicada en [06 — HOWTO](06-howto-arranque-y-crud.md).
-
-Guía detallada: **[06 — HOWTO arranque y CRUD](06-howto-arranque-y-crud.md)** (puerto ocupado, JAR, verificación, CRUD de labels/hints).
+> Maven portable: `arrancar.cmd` · Distribución: `arrancar-jar.cmd` + JAR. Servidor: **Tomcat embebido** en Spring Boot (puerto 8080).
 
 ## Archivos de ejemplo
 
@@ -65,4 +65,4 @@ Cárguelos con **Cargar XML base** desde su copia local.
 
 Ver [05 — APIs externas](05-apis-externas.md) para el detalle de dependencias de red.
 
-La carpeta `orbeon-editor/` contiene un prototipo anterior (Jetty + servlets). La aplicación activa es el módulo Maven raíz (`orbeon-form-editor`).
+La aplicación activa es el módulo Maven raíz (`orbeon-form-editor`, Spring Boot + Tomcat embebido).

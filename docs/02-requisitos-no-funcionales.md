@@ -86,7 +86,7 @@
 |----|-----------|------------------------|
 | RNF-070 | API REST JSON/multipart consumible por herramientas externas (scripts, CI). | Endpoints documentados. |
 | RNF-071 | XML exportado compatible con reimportación en Orbeon Form Builder. | Preserva estructura DOM; cambios mínimos. |
-| RNF-072 | Formato `changes[]` compatible con prototipo `orbeon-editor/`. | Migrado desde `OrbeonXmlService`. |
+| RNF-072 | Formato `changes[]` compatible con el motor de modificaciones del editor. | Implementado en `OrbeonModificationService`. |
 | RNF-073 | El backend no realiza peticiones HTTP salientes en operación normal. | Sin cliente HTTP en Java; ver [05-apis-externas.md](05-apis-externas.md). |
 | RNF-074 | El asistente NL funciona sin servicios de IA en la nube. | `OrbeonNaturalLanguageService` local. |
 | RNF-075 | Dependencia de internet limitada al CDN Tailwind en el navegador. | Empaquetable offline. |

@@ -56,7 +56,8 @@ Diagrama detallado: [diagramas/arquitectura-componentes.puml](diagramas/arquitec
 ```
 orbeon/
 ├── pom.xml
-├── arrancar.cmd                   ← Arranque Windows (Maven en .tools)
+├── arrancar.cmd                   ← Arranque Windows (Maven en .tools, desarrollo)
+├── arrancar-jar.cmd               ← Arranque con JAR (distribución / otro PC)
 ├── docs/                          ← Esta documentación
 ├── .tools/                        ← Maven portable (versionado)
 └── src/
@@ -499,14 +500,34 @@ Guías: [08-editor-crud-contextual-y-preview.md](08-editor-crud-contextual-y-pre
 
 ---
 
-## 9. Desarrollo local
+## 9. Servidor embebido, arranque y despliegue
 
-### Requisitos
+### 9.1 Servidor web embebido
 
-- JDK 17+
-- Maven 3.8+
+| Aspecto | Detalle |
+|---------|---------|
+| Framework | Spring Boot **3.2.5** |
+| Dependencia | `spring-boot-starter-web` |
+| Servidor | **Apache Tomcat embebido** (no requiere instalación externa) |
+| Puerto por defecto | `8080` (`server.port` en `application.properties`) |
+| UI | `src/main/resources/static/index.html` |
+| API | `/api/formulario/*` (`FormularioController`) |
+| Subida de archivos | Hasta 50 MB (`spring.servlet.multipart.*`) |
 
-### Comandos
+Al ejecutar `OrbeonEditorApplication`, Tomcat arranca en el mismo proceso JVM que la aplicación.
+
+### 9.2 Requisitos en el equipo destino
+
+| Componente | ¿Obligatorio? |
+|------------|---------------|
+| Java **17+** (JRE o JDK) | Sí |
+| Maven | No, si se distribuye el JAR compilado |
+| Tomcat / IIS / nginx | No |
+| Internet | Solo para CDN Tailwind en el navegador |
+
+### 9.3 Desarrollo local
+
+**Requisitos:** JDK 17+, Maven 3.8+ (o Maven en `.tools` vía `arrancar.cmd`).
 
 ```bash
 # Windows: arrancar.cmd (Maven en .tools)
@@ -517,21 +538,37 @@ mvn spring-boot:run
 # Tests
 mvn test
 
-# Test específico desplegables / instancia / PDF
-mvn test -Dtest=SelectItemsVerificationTest
-mvn test -Dtest=OrbeonInstanceServiceTest
-mvn test -Dtest=OrbeonPdfServiceTest
-
 # JAR ejecutable
-mvn package
+mvn package -DskipTests
 java -jar target/orbeon-form-editor-1.0.0-SNAPSHOT.jar
+
+# Windows sin Maven global
+arrancar-jar.cmd
 ```
 
-### Puerto ocupado
+### 9.4 Distribución en otro equipo (JAR + JRE portable)
+
+1. Compilar: `.tools/apache-maven-3.9.16/bin/mvn.cmd package -DskipTests`
+2. Copiar `target/orbeon-form-editor-1.0.0-SNAPSHOT.jar` y `arrancar-jar.cmd`
+3. Opcional: JRE 17 portable en subcarpeta `jre/` (Temurin `.zip`)
+4. Ejecutar `arrancar-jar.cmd` → http://localhost:8080
+
+Guía paso a paso: [06-howto-arranque-y-crud.md](06-howto-arranque-y-crud.md) (Parte 1, opciones C y D).
+
+### 9.5 Puerto ocupado
 
 ```powershell
 netstat -ano | findstr :8080
 taskkill /PID <pid> /F
+```
+
+### 9.6 Tests útiles
+
+```bash
+mvn test -Dtest=SelectItemsVerificationTest
+mvn test -Dtest=OrbeonInstanceServiceTest
+mvn test -Dtest=OrbeonPdfServiceTest
+mvn test -Dtest=OrbeonXmlUtilTest
 ```
 
 ---
@@ -575,4 +612,4 @@ Resumen: **solo CDN Tailwind** en el navegador; URLs JCYL y Orbeon en XML sin in
 ## 14. Referencias
 
 - [Orbeon Form Runner documentation](https://doc.orbeon.com/)
-- Carpeta legado: `orbeon-editor/src/main/java/com/orbeon/editor/OrbeonXmlService.java`
+- [Eclipse Temurin 17](https://adoptium.net/) — JRE portable para despliegue

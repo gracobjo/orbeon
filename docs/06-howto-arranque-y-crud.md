@@ -6,15 +6,22 @@ Guía práctica para poner en marcha **Orbeon Form Editor** y modificar plantill
 
 ## Parte 1 — Arrancar el servidor
 
+### Servidor web embebido
+
+El proyecto usa **Spring Boot 3.2.5** con `spring-boot-starter-web`, que incluye **Apache Tomcat embebido**. No hace falta instalar Tomcat, IIS ni nginx.
+
+Al arrancar, Spring Boot levanta Tomcat en el mismo proceso Java y escucha en el puerto de `application.properties` (por defecto **8080**). La UI (`index.html`) y la API REST (`/api/formulario/*`) se sirven desde **http://localhost:8080**.
+
 ### Requisitos previos
 
-| Componente | Versión mínima | Comprobar |
-|------------|----------------|-----------|
-| Java JDK | 17+ | `java -version` |
-| Maven | 3.8+ | `mvn -version` |
-| Navegador | Chrome, Edge o Firefox reciente | — |
+| Componente | Versión mínima | ¿Obligatorio? | Comprobar |
+|------------|----------------|---------------|-----------|
+| Java JDK/JRE | 17+ | **Sí** (siempre) | `java -version` |
+| Maven | 3.8+ | Solo desarrollo o `arrancar.cmd` | `mvn -version` |
+| Tomcat externo | — | **No** (embebido en Spring Boot) | — |
+| Internet | — | Solo estilos Tailwind (CDN) | — |
 
-En Windows, si Maven no está en el PATH tras instalarlo (p. ej. con Scoop), abre una **nueva** terminal o reinicia el IDE.
+En Windows, si Maven no está en el PATH, use `arrancar.cmd` (Maven en `.tools`) o el JAR con `arrancar-jar.cmd`.
 
 ### Opción A — Script Windows (recomendado)
 
@@ -40,12 +47,57 @@ Cuando aparezca en consola algo como `Started OrbeonEditorApplication`, abre:
 
 La interfaz web se sirve automáticamente desde `src/main/resources/static/index.html`.
 
-### Opción C — JAR ejecutable
+### Opción C — JAR ejecutable (desarrollo o distribución)
 
 ```bash
-mvn package -DskipTests
-java -jar target/orbeon-form-editor-1.0.0-SNAPSHOT.jar
+.tools\apache-maven-3.9.16\bin\mvn.cmd package -DskipTests
+java -jar target\orbeon-form-editor-1.0.0-SNAPSHOT.jar
 ```
+
+En Windows, doble clic en **`arrancar-jar.cmd`** (usa el JAR de `target\` o el de la misma carpeta).
+
+El JAR generado es **fat** (executable): incluye Tomcat embebido, Spring Boot y la aplicación. No requiere Maven en el equipo que solo ejecuta.
+
+### Opción D — Otro PC sin Maven (recomendado para distribuir)
+
+**En el equipo de desarrollo** (una vez):
+
+```cmd
+cd ruta\al\proyecto\orbeon
+.tools\apache-maven-3.9.16\bin\mvn.cmd package -DskipTests
+```
+
+Copie al otro equipo una carpeta, por ejemplo `orbeon-dist\`:
+
+```
+orbeon-dist\
+├── orbeon-form-editor-1.0.0-SNAPSHOT.jar   ← desde target\
+├── arrancar-jar.cmd                        ← desde la raíz del repo
+└── jre\                                    ← opcional: JRE 17 portable (.zip)
+    └── bin\java.exe
+```
+
+**JRE portable:** [Eclipse Temurin 17](https://adoptium.net/) en formato **`.zip`** (no instalador `.msi`). Descomprima como `jre\` junto al JAR. Si no hay carpeta `jre\`, el script usa `java` del PATH del sistema.
+
+Doble clic en **`arrancar-jar.cmd`** → abrir **http://localhost:8080**.
+
+| Método | Java | Maven | Tomcat |
+|--------|------|-------|--------|
+| `arrancar.cmd` + código fuente | Sí | Incluido en `.tools` | Embebido |
+| `arrancar-jar.cmd` + JAR | Sí (o `jre\` portable) | No | Embebido en el JAR |
+| `git clone` + `arrancar.cmd` | Sí | Incluido en `.tools` | Embebido |
+
+### Opción E — Clonar el repositorio
+
+Si el otro PC tiene **Java 17** instalado:
+
+```bash
+git clone https://github.com/gracobjo/orbeon.git
+cd orbeon
+arrancar.cmd
+```
+
+La primera ejecución compila con Maven portable (más lenta que el JAR).
 
 ### Cambiar el puerto
 
