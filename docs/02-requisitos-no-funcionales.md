@@ -44,7 +44,7 @@
 | ID | Requisito | Criterio de aceptación |
 |----|-----------|------------------------|
 | RNF-030 | Arquitectura en capas: controller → service → util/model. | Paquetes `controller`, `service`, `model`, `util`, `dto`. |
-| RNF-031 | Servicios Spring con responsabilidad única (parseo, estructura, modificación, comparación, PDF). | 5 servicios especializados. |
+| RNF-031 | Servicios Spring con responsabilidad única (parseo, estructura, modificación, comparación, PDF, instrucciones PDF). | Servicios en `com.orbeon.editor.service`. |
 | RNF-032 | Tests automatizados para regresión de desplegables. | `SelectItemsVerificationTest`. |
 | RNF-033 | Documentación de API de modificaciones auto-generada vía endpoint. | `/esquema-modificaciones`. |
 

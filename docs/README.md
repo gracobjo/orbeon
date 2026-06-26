@@ -6,6 +6,7 @@ Editor visual de plantillas XML de **Orbeon Form Runner** para lectura, edición
 
 | Documento | Descripción |
 |-----------|-------------|
+| [**00 — Manual de usuario**](00-manual-usuario.md) | Guía práctica: botones, pestañas, flujos y limitaciones |
 | [01 — Requisitos funcionales](01-requisitos-funcionales.md) | Qué debe hacer el sistema (RF-xxx) |
 | [02 — Requisitos no funcionales](02-requisitos-no-funcionales.md) | Rendimiento, seguridad, usabilidad, etc. (RNF-xxx) |
 | [03 — Casos de uso](03-casos-de-uso.md) | Actores, flujos y escenarios (CU-xxx) |
@@ -17,6 +18,7 @@ Editor visual de plantillas XML de **Orbeon Form Runner** para lectura, edición
 | [09 — Calculadoras XForms](09-calculadoras-xforms.md) | `xf:bind @calculate`: inventario, tipos y edición en plantilla 684/480 |
 | [10 — Controles genéricos y búsqueda XML](10-controles-genericos-y-busqueda-xml.md) | Detección `control-N`, renombrado CRUD y buscador en Código XML |
 | [11 — Análisis PDF instrucciones](11-analisis-pdf-instrucciones.md) | Anotaciones del PDF → propuestas XML, catálogo 684, API y etiquetas |
+| [12 — Roadmap y mejoras](12-roadmap-mejoras.md) | Pendientes, eficiencia y orden de implementación recomendado |
 | [Diagramas UML](diagramas/) | Fuentes PlantUML (casos de uso, clases, componentes, secuencia) |
 
 ## Stack tecnológico

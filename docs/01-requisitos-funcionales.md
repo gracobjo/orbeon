@@ -181,3 +181,7 @@ El parseo reconoce, entre otros:
 | RF-L05 | `yesno-input` y `appearance="full"` se renderizan de forma simplificada en vista diseño. |
 | RF-L06 | No se persiste el estado en base de datos; todo es en memoria del navegador/sesión HTTP. |
 | RF-L09 | El editor no ejecuta XPath en tiempo real; las calculadoras se analizan y editan en XML estático (sin recalcular valores como Orbeon Form Runner). |
+| RF-L10 | El análisis de PDF de instrucciones solo cubre el formulario 684/480 con catálogo `instrucciones-684-mapeo.json`; altas complejas quedan en revisión manual. |
+| RF-L11 | La pestaña «Vista PDF» fue retirada de la UI; la generación PDF sigue disponible vía `POST /api/formulario/vista-pdf`. |
+
+Manual de usuario: [00-manual-usuario.md](00-manual-usuario.md) · Mejoras planificadas: [12-roadmap-mejoras.md](12-roadmap-mejoras.md).

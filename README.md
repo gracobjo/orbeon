@@ -29,6 +29,8 @@ Ver carpeta [`docs/`](docs/README.md):
 
 | Doc | Contenido |
 |-----|-----------|
+| [**Manual de usuario**](docs/00-manual-usuario.md) | Qué hace cada botón, pestañas y flujos habituales |
+| [Roadmap y mejoras](docs/12-roadmap-mejoras.md) | Pendientes y cómo ganar eficiencia |
 | [HOWTO arranque y CRUD](docs/06-howto-arranque-y-crud.md) | Cómo arrancar y editar labels/hints/desplegables |
 | [Editor CRUD contextual](docs/08-editor-crud-contextual-y-preview.md) | Navegar desde resultados, preview antes de guardar |
 | [Dependencias de secciones](docs/07-dependencias-secciones.md) | Visibilidad condicional y CRUD de `relevant` |

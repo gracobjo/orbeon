@@ -157,8 +157,8 @@ flowchart LR
 | **Actor** | Desarrollador, Analista |
 | **Descripción** | Obtener PDF de previsualización del formulario. |
 | **Precondiciones** | CU-01 completado. |
-| **Flujo principal** | 1. Usuario cambia a «Vista PDF».<br>2. `POST /api/formulario/vista-pdf` con XML actual.<br>3. PDF se muestra en iframe embebido. |
-| **Limitación** | No es el PDF real de Orbeon; excluye `noprintinpdf`. |
+| **Flujo principal** | 1. Cliente llama `POST /api/formulario/vista-pdf` con XML actual (y opcionalmente preset de instancia).<br>2. El servidor devuelve bytes PDF.<br>3. *(UI retirada junio 2026)* Antes se mostraba en iframe; hoy solo vía API o herramientas externas. |
+| **Limitación** | No es el PDF real de Orbeon; excluye `noprintinpdf`. Restaurar pestaña en UI: ver [M-010](12-roadmap-mejoras.md). |
 | **Requisitos** | RF-017, RF-043 |
 
 ---

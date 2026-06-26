@@ -129,3 +129,10 @@ Verifica que el intérprete no elimina declaraciones no contempladas en el catá
 - Las propuestas **Revisar** (altas de controles) no se aplican solas: hay que copiar la estructura del XML objetivo manualmente.
 - La extracción de anotaciones depende del formato del PDF (comentarios/marcas de revisión en el margen).
 - No sustituye la revisión humana del comparador PRE vs v39.
+
+---
+
+## 7. Documentación relacionada
+
+- [00 — Manual de usuario](00-manual-usuario.md) — flujos, botones y consejos de eficiencia
+- [12 — Roadmap y mejoras](12-roadmap-mejoras.md) — pendientes (catálogo, aplicar propuestas, Vista PDF, etc.)
