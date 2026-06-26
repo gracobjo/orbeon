@@ -48,3 +48,6 @@ credentials.json
 
 # PDF generados o de prueba
 *.pdf
+
+# Plantillas Orbeon de prueba (exportadas como .txt)
+*.txt

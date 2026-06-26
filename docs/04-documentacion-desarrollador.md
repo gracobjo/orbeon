@@ -58,9 +58,7 @@ orbeon/
 ├── pom.xml
 ├── arrancar.cmd                   ← Arranque Windows (Maven en .tools)
 ├── docs/                          ← Esta documentación
-├── 684_F1b_MIXTO_480_Solicitud_PRE.txt
-├── 684_F1b_MIXTO_480_Solicitud_v39.txt
-├── orbeon-editor/                 ← Prototipo legado (Jetty)
+├── .tools/                        ← Maven portable (versionado)
 └── src/
     ├── main/
     │   ├── java/com/orbeon/editor/
@@ -79,8 +77,11 @@ orbeon/
     └── test/
         └── java/.../
             ├── SelectItemsVerificationTest.java
-            └── NaturalLanguageServiceTest.java
+            ├── NaturalLanguageServiceTest.java
+            └── OrbeonXmlUtilTest.java
 ```
+
+**`.gitignore` relevante:** `target/`, `.tools/` excepto JARs de Maven (`!/.tools/**/*.jar`), `*.pdf` y `*.txt` (plantillas Orbeon locales de prueba no se suben al repositorio).
 
 ---
 
@@ -157,6 +158,17 @@ Devuelve `EstructuraFormulario` con lista de `SeccionFormulario`, cada una con c
 | `add-image` | `imageTag`, `src?`, `filename?`, `mediatype?`, `sectionId?`, `label?` |
 | `update-section-relevant` | `bindId` o `sectionId`, `relevant` \| `removeRelevant: true` |
 | `update-calculator` | `bindId`, `calculate` \| `removeCalculate: true` |
+| `rename-control-numeric` | `nombreActual`, `nombreNuevo` — renombra instancia, bind, control y resources de un campo `control-N` |
+
+### 4.4b `OrbeonXmlUtil` (controles genéricos)
+
+| Método | Descripción |
+|--------|-------------|
+| `detectarEtiquetasControlNumerico(xml)` | Lista ordenada de nombres `control-N` (regex sobre XML en bruto) |
+| `analizarEtiquetasControlNumerico(xml)` | Lista de `EtiquetaControlNumerico` con bind, control, tipo y ocurrencias |
+| `renombrarEtiquetaControlNumerico(xml, viejo, nuevo)` | Renombrado coherente en DOM |
+
+Ver [10 — Controles genéricos y búsqueda XML](10-controles-genericos-y-busqueda-xml.md).
 
 ### 4.5 `OrbeonDependencyService`
 
@@ -189,6 +201,8 @@ Ver [09 — Calculadoras XForms](09-calculadoras-xforms.md).
 ### 4.7 `OrbeonCompareService`
 
 Compara dos listas de componentes indexadas por `id`. Estados: `ANADIDO`, `ELIMINADO`, `MODIFICADO`. Campos comparados: label, hint, alert, tipo, appearance.
+
+Además detecta etiquetas genéricas `control-N` en cada XML y reporta en `ComparacionResponse`: listas base/nuevo, añadidas y eliminadas entre versiones.
 
 ### 4.8 `OrbeonPdfService`
 
@@ -261,6 +275,7 @@ Diagrama: [diagramas/clases-dominio.puml](diagramas/clases-dominio.puml)
 | `CambioCampo` | campo, valorAnterior, valorNuevo |
 | `LogoEnFormulario` | posicionGlobal, posicionEnSeccion, tag, controlId, sectionId, src, … |
 | `CalculadoraFormulario` | bindId, ref, label, controlId, calculate, tipo, fuentes[] |
+| `EtiquetaControlNumerico` | nombre, bindId, controlId, tipoControl, ocurrencias |
 | `AnalisisCalculadoras` | total, calculadoras[], glosarioFuentes{} |
 | `ResultadoCumplimentacion` | xml, etiquetas{}, camposAplicados |
 
@@ -293,7 +308,11 @@ Diagrama: [diagramas/clases-dominio.puml](diagramas/clases-dominio.puml)
   "componentes": [ { "id": "...", "tipo": "select1", "label": "...", "items": [...] } ],
   "estructura": { "secciones": [...], "totalComponentes": 300 },
   "dependencias": { "total": 42, "elementos": [...] },
-  "calculadoras": { "total": 141, "calculadoras": [...], "glosarioFuentes": {} }
+  "calculadoras": { "total": 141, "calculadoras": [...], "glosarioFuentes": {} },
+  "etiquetasControlNumerico": ["control-1"],
+  "controlesGenericos": [
+    { "nombre": "control-1", "bindId": "control-1-bind", "controlId": "control-1-control", "tipoControl": "explanation", "ocurrencias": 11 }
+  ]
 }
 ```
 
@@ -423,6 +442,7 @@ Variables globales JS (sin framework):
 - `estructura` — jerarquía secciones
 - `dependencias` — análisis de `relevant` (`OrbeonDependencyService`)
 - `calculadoras` — análisis de `calculate` (`OrbeonCalculatorService`)
+- `controlesGenericos` — campos `control-N` (`OrbeonXmlUtil`)
 - `changelog` — cambios pendientes de la sesión
 - `editorCrudActivo` — elemento en edición en el panel CRUD contextual
 - `previewBorradorActivo` / `snapshotAntesPreview` — estado de previsualización sin guardar
@@ -436,9 +456,10 @@ Variables globales JS (sin framework):
 | Secciones | Árbol por sección; clic en cabecera/campo/imagen → editor CRUD |
 | **Dependencias** | Visibilidad condicional; clic en tarjeta → editor CRUD |
 | **Calculadoras** | `xf:bind @calculate`; fuentes de datos, filtros, edición inline y CRUD |
+| **Controles N** | Detección `control-N`, lista filtrable y renombrado CRUD |
 | Modificar JSON | Editor `changes[]` |
 | Cambios | Changelog acumulado |
-| Código XML | Textarea + sincronizar; destino al localizar desde CRUD |
+| Código XML | Textarea con **buscador** (patrones, resaltado, ◀/▶), capa de iluminación y sincronizar |
 
 ### Panel CRUD contextual (`#panelEditorCrud`)
 
@@ -447,14 +468,15 @@ Barra inferior del panel izquierdo. Funciones principales en `index.html`:
 | Función | Descripción |
 |---------|-------------|
 | `abrirEditorCrud(tipo, meta)` | Muestra panel, renderiza formulario, llama `irACodigoXml` |
-| `irACodigoXml(terminos)` | Selección en `#textareaXml` |
+| `irACodigoXml(terminos)` | Selección y scroll en `#textareaXml`; resaltado en `#xmlHighlightLayer` |
+| `ejecutarBusquedaXml()` / `actualizarResaltadoBusquedaXml()` | Buscador con patrones Orbeon y marcas amarillo/naranja |
 | `previsualizarEditorCrud()` | `POST /modificar` + `/sincronizar-codigo` sin actualizar `xmlActual` |
 | `aplicarEditorCrud()` | Persiste cambios vía `/modificar` y `procesarRespuesta` |
 | `descartarPreviewBorrador()` | Restaura snapshot de componentes/estructura/dependencias |
 
-Tipos soportados: `logo`, `campo`, `desplegable`, `seccion`, `dependencia`, `calculadora`.
+Tipos soportados: `logo`, `campo`, `desplegable`, `seccion`, `dependencia`, `calculadora`, `control-generico`.
 
-Guía de usuario: [08-editor-crud-contextual-y-preview.md](08-editor-crud-contextual-y-preview.md).
+Guías: [08-editor-crud-contextual-y-preview.md](08-editor-crud-contextual-y-preview.md), [10-controles-genericos-y-busqueda-xml.md](10-controles-genericos-y-busqueda-xml.md).
 
 ### Panel derecho
 
@@ -540,6 +562,7 @@ taskkill /PID <pid> /F
 | `NaturalLanguageServiceTest` | Logos, consultas NL, CRUD opciones desplegable |
 | `OrbeonInstanceServiceTest` | Preset instrucciones-684 aplica NIF y CIF |
 | `OrbeonPdfServiceTest` | Generación PDF vacío y cumplimentado multipágina |
+| `OrbeonXmlUtilTest` | Detección `control-N`, renombrado `rename-control-numeric` |
 
 ---
 

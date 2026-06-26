@@ -27,6 +27,8 @@ import com.orbeon.editor.service.OrbeonModificationService;
 import com.orbeon.editor.service.OrbeonNaturalLanguageService;
 import com.orbeon.editor.service.OrbeonPdfService;
 import com.orbeon.editor.service.OrbeonStructureService;
+import com.orbeon.editor.model.EtiquetaControlNumerico;
+import com.orbeon.editor.util.OrbeonXmlUtil;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -93,6 +95,28 @@ public class FormularioController {
         resp.setEstructura(orbeonStructureService.parsearEstructuraCompleta(xml));
         resp.setDependencias(dependencyService.analizar(xml));
         resp.setCalculadoras(calculatorService.analizar(xml));
+        try {
+            List<EtiquetaControlNumerico> controles =
+                    OrbeonXmlUtil.analizarEtiquetasControlNumerico(xml);
+            resp.setControlesGenericos(controles);
+            resp.setEtiquetasControlNumerico(controles.stream()
+                    .map(EtiquetaControlNumerico::getNombre)
+                    .toList());
+        } catch (Exception e) {
+            List<String> nombres = OrbeonXmlUtil.detectarEtiquetasControlNumerico(xml);
+            resp.setEtiquetasControlNumerico(nombres);
+            try {
+                resp.setControlesGenericos(OrbeonXmlUtil.analizarEtiquetasControlNumerico(xml));
+            } catch (Exception ex) {
+                resp.setControlesGenericos(nombres.stream().map(n -> {
+                    EtiquetaControlNumerico item = new EtiquetaControlNumerico();
+                    item.setNombre(n);
+                    item.setBindId(n + "-bind");
+                    item.setControlId(n + "-control");
+                    return item;
+                }).toList());
+            }
+        }
         return resp;
     }
 

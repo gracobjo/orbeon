@@ -4,7 +4,9 @@ import com.orbeon.editor.model.AnalisisCalculadoras;
 import com.orbeon.editor.model.AnalisisDependencias;
 import com.orbeon.editor.model.ComponenteFormulario;
 import com.orbeon.editor.model.EstructuraFormulario;
+import com.orbeon.editor.model.EtiquetaControlNumerico;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class FormularioResponse {
@@ -14,6 +16,8 @@ public class FormularioResponse {
     private EstructuraFormulario estructura;
     private AnalisisDependencias dependencias;
     private AnalisisCalculadoras calculadoras;
+    private List<String> etiquetasControlNumerico = new ArrayList<>();
+    private List<EtiquetaControlNumerico> controlesGenericos = new ArrayList<>();
 
     public FormularioResponse() {
     }
@@ -61,5 +65,22 @@ public class FormularioResponse {
 
     public void setCalculadoras(AnalisisCalculadoras calculadoras) {
         this.calculadoras = calculadoras;
+    }
+
+    public List<String> getEtiquetasControlNumerico() {
+        return etiquetasControlNumerico;
+    }
+
+    public void setEtiquetasControlNumerico(List<String> etiquetasControlNumerico) {
+        this.etiquetasControlNumerico = etiquetasControlNumerico != null
+                ? etiquetasControlNumerico : new ArrayList<>();
+    }
+
+    public List<EtiquetaControlNumerico> getControlesGenericos() {
+        return controlesGenericos;
+    }
+
+    public void setControlesGenericos(List<EtiquetaControlNumerico> controlesGenericos) {
+        this.controlesGenericos = controlesGenericos != null ? controlesGenericos : new ArrayList<>();
     }
 }

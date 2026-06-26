@@ -52,7 +52,42 @@
             min-height: 10rem;
             overflow: hidden;
         }
+        .xml-editor-stack {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        .xml-highlight-layer {
+            position: absolute;
+            inset: 0;
+            margin: 0;
+            padding: 1rem;
+            overflow: hidden;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            tab-size: 2;
+            font-size: 0.75rem;
+            line-height: 1.625;
+            color: #6ee7b7;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .xml-highlight-layer mark.xml-hit {
+            background: rgba(251, 191, 36, 0.42);
+            color: #fef9c3;
+            border-radius: 2px;
+        }
+        .xml-highlight-layer mark.xml-hit-active {
+            background: rgba(249, 115, 22, 0.88);
+            color: #fff;
+            box-shadow: 0 0 0 1px #fdba74;
+            border-radius: 2px;
+        }
         #textareaXml {
+            position: relative;
+            z-index: 1;
             display: block;
             width: 100%;
             height: 100%;
@@ -61,9 +96,18 @@
             overflow-x: auto;
             resize: none;
             box-sizing: border-box;
+            background: transparent;
+            color: transparent;
+            caret-color: #6ee7b7;
         }
         #panelCodigo .xml-sync-bar {
             flex: 0 0 auto;
+        }
+        .xml-search-bar input[type="search"] {
+            color-scheme: dark;
+        }
+        .xml-search-bar input[type="search"]::-webkit-search-cancel-button {
+            cursor: pointer;
         }
         /* CRUD abierto + pestaña Código: XML más bajo, editor ocupa el resto */
         #panelIzquierdo.layout-xml-crud #panelCodigo {
@@ -74,6 +118,9 @@
             height: 32vh;
             max-height: 32vh;
             min-height: 8rem;
+        }
+        #panelIzquierdo.layout-xml-crud .xml-highlight-layer {
+            max-height: 32vh;
         }
         #panelIzquierdo.layout-xml-crud #panelEditorCrud {
             flex: 1 1 0;
@@ -142,6 +189,7 @@
             <button id="tabSecciones" class="flex-shrink-0 px-3 py-3 text-xs text-center text-slate-500 hover:text-slate-700 transition">Secciones</button>
             <button id="tabDependencias" class="flex-shrink-0 px-3 py-3 text-xs text-center text-slate-500 hover:text-slate-700 transition">Dependencias</button>
             <button id="tabCalculadoras" class="flex-shrink-0 px-3 py-3 text-xs text-center text-slate-500 hover:text-slate-700 transition">Calculadoras</button>
+            <button id="tabControlesGenericos" class="flex-shrink-0 px-3 py-3 text-xs text-center text-slate-500 hover:text-slate-700 transition">Controles N <span id="cntControlesGenericos" class="ml-1 bg-amber-200 text-amber-900 px-1 rounded text-[10px] hidden">0</span></button>
             <button id="tabModificar" class="flex-shrink-0 px-3 py-3 text-xs text-center text-slate-500 hover:text-slate-700 transition">Modificar JSON</button>
             <button id="tabChangelog" class="flex-shrink-0 px-3 py-3 text-xs text-center text-slate-500 hover:text-slate-700 transition">Cambios <span id="cntChangelog" class="ml-1 bg-slate-200 px-1 rounded text-[10px]">0</span></button>
             <button id="tabCodigo" class="flex-shrink-0 px-3 py-3 text-xs text-center text-slate-500 hover:text-slate-700 transition">Código XML</button>
@@ -281,6 +329,25 @@
             </details>
         </div>
 
+        <!-- Pestaña Controles genéricos control-N -->
+        <div id="panelControlesGenericos" class="flex-1 flex flex-col hidden overflow-hidden">
+            <div class="p-3 border-b border-slate-100 bg-gradient-to-r from-amber-50 to-orange-50 shrink-0">
+                <p class="text-xs text-slate-600 mb-2">
+                    Campos con nombre genérico <code class="text-[10px]">control-N</code> en instancia, bind y vista
+                    (<code class="text-[10px]">id="control-1-control"</code>). Renómbralos con un identificador descriptivo.
+                </p>
+                <div id="ctrlGenResumen" class="flex flex-wrap gap-2 text-[10px] text-slate-500"></div>
+            </div>
+            <div class="p-3 border-b border-slate-100 shrink-0">
+                <input id="buscarControlesGenericos" type="search" placeholder="Filtrar por nombre, bind o control…"
+                       class="w-full text-sm border border-slate-300 rounded-md px-3 py-1.5 focus:ring-2 focus:ring-orbeon-500 outline-none">
+            </div>
+            <div id="ctrlGenFeedback" class="hidden mx-3 mt-2 px-3 py-2 rounded-md text-xs border shrink-0"></div>
+            <div id="listaControlesGenericos" class="flex-1 overflow-y-auto p-3 space-y-2 min-h-0">
+                <p class="text-slate-400 text-xs text-center py-8">Carga un XML para detectar controles genéricos</p>
+            </div>
+        </div>
+
         <!-- Pestaña Modificar JSON tipado -->
         <div id="panelModificar" class="flex-1 flex flex-col hidden overflow-hidden">
             <div class="p-3 border-b border-slate-100 flex gap-2">
@@ -301,10 +368,37 @@
 
         <!-- Pestaña Vista Código XML -->
         <div id="panelCodigo" class="flex-1 flex flex-col hidden min-h-0 overflow-hidden">
+            <div class="xml-search-bar shrink-0 flex flex-wrap items-center gap-2 px-3 py-2 bg-slate-800 border-b border-slate-700">
+                <input id="buscarXml" type="search" spellcheck="false"
+                       placeholder="Buscar en XML… ej. control-1-control"
+                       title="Ctrl+F · Enter siguiente · Shift+Enter anterior"
+                       class="flex-1 min-w-[10rem] px-2.5 py-1.5 text-xs rounded-md border border-slate-600 bg-slate-900 text-emerald-200 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-orbeon-500">
+                <select id="buscarXmlPatron"
+                        title="Patrón de búsqueda Orbeon"
+                        class="px-2 py-1.5 text-xs rounded-md border border-slate-600 bg-slate-900 text-slate-200 focus:outline-none focus:ring-1 focus:ring-orbeon-500">
+                    <option value="auto">Auto (Orbeon)</option>
+                    <option value="libre">Texto libre</option>
+                    <option value="campo">Campo completo</option>
+                    <option value="control">ID control (*-control)</option>
+                    <option value="bind">ID bind (*-bind)</option>
+                    <option value="instancia">Instancia (ref / tag)</option>
+                </select>
+                <div class="flex items-center gap-1 shrink-0">
+                    <button type="button" id="buscarXmlAnterior" title="Anterior (Shift+Enter)"
+                            class="px-2 py-1 text-xs rounded border border-slate-600 bg-slate-700 text-slate-200 hover:bg-slate-600 disabled:opacity-40">◀</button>
+                    <button type="button" id="buscarXmlSiguiente" title="Siguiente (Enter)"
+                            class="px-2 py-1 text-xs rounded border border-slate-600 bg-slate-700 text-slate-200 hover:bg-slate-600 disabled:opacity-40">▶</button>
+                    <span id="buscarXmlContador" class="text-[10px] text-slate-400 tabular-nums min-w-[3rem] text-center">—</span>
+                </div>
+            </div>
+            <div id="xmlAvisoControlNumerico" class="hidden shrink-0 px-3 py-1.5 text-[10px] bg-amber-950/80 text-amber-200 border-b border-amber-800/60"></div>
             <div id="xmlEditorViewport" class="xml-editor-viewport bg-slate-900 border-b border-slate-700">
-                <textarea id="textareaXml" spellcheck="false" placeholder="El código XML aparecerá aquí…"
-                          class="code-area w-full p-4 bg-slate-900 text-emerald-300 text-xs leading-relaxed focus:outline-none"
-                          title="Desplazar dentro de esta ventana para recorrer el XML"></textarea>
+                <div class="xml-editor-stack">
+                    <pre id="xmlHighlightLayer" class="xml-highlight-layer code-area" aria-hidden="true"></pre>
+                    <textarea id="textareaXml" spellcheck="false" placeholder="El código XML aparecerá aquí…"
+                              class="code-area w-full p-4 text-xs leading-relaxed focus:outline-none"
+                              title="Desplazar dentro de esta ventana para recorrer el XML"></textarea>
+                </div>
             </div>
             <div class="xml-sync-bar shrink-0 p-3 border-t border-slate-200 bg-slate-50">
                 <button id="btnSincronizar"
@@ -412,6 +506,7 @@
             <button id="cerrarComparar" class="text-slate-400 hover:text-slate-600 text-2xl leading-none">&times;</button>
         </div>
         <div id="compararResumen" class="px-6 py-3 flex flex-wrap gap-3 border-b border-slate-100 bg-white"></div>
+        <div id="compararControlNumerico" class="hidden px-6 py-3 border-b border-amber-200 bg-amber-50 text-xs text-amber-950"></div>
         <div class="px-6 py-2 flex gap-2 border-b border-slate-100">
             <button data-filtro="TODOS" class="filtro-diff px-3 py-1 text-xs rounded-full bg-slate-800 text-white">Todos</button>
             <button data-filtro="ANADIDO" class="filtro-diff px-3 py-1 text-xs rounded-full bg-emerald-100 text-emerald-800">Añadidos</button>
@@ -463,6 +558,8 @@
     let dependenciaEditandoId = null;
     let calculadoras = null;
     let filtroCalculadoras = '';
+    let controlesGenericos = [];
+    let filtroControlesGenericos = '';
     let calculadoraEditandoId = null;
 
     const TIPO_VISIBILIDAD = {
@@ -603,6 +700,9 @@
     /* --- Navegación XML + editor CRUD contextual --- */
     let xmlNavUltimoCampo = null;
     let xmlNavIndice = 0;
+    let xmlBusquedaPosiciones = [];
+    let xmlBusquedaIndice = -1;
+    let xmlBusquedaQuery = '';
 
     function patronesBusquedaXml(t) {
         if (!t) return [];
@@ -617,32 +717,285 @@
         ];
     }
 
-    function buscarTodasPosicionesEnXml(terminos) {
+    function baseNombreOrbeon(q) {
+        return (q || '').trim().replace(/-(control|bind)$/, '');
+    }
+
+    function expandirPatronesBusqueda(query, modo = 'auto') {
+        const q = (query || '').trim();
+        if (!q) return [];
+        const base = baseNombreOrbeon(q);
+
+        switch (modo) {
+            case 'libre':
+                return [q];
+            case 'control': {
+                const id = q.endsWith('-control') ? q : `${base}-control`;
+                return [`id="${id}"`, `id='${id}'`];
+            }
+            case 'bind': {
+                const id = q.endsWith('-bind') ? q : `${base}-bind`;
+                return [`id="${id}"`, `id='${id}'`, `bind="${id}"`, `bind='${id}'`];
+            }
+            case 'instancia':
+                return [
+                    `<${base}>`, `<${base}/>`, `<${base} `,
+                    `ref="${base}"`, `ref='${base}'`,
+                    `name="${base}"`, `name='${base}'`
+                ];
+            case 'campo': {
+                const patrones = new Set([
+                    ...patronesBusquedaXml(`${base}-control`),
+                    ...patronesBusquedaXml(`${base}-bind`),
+                    ...expandirPatronesBusqueda(base, 'instancia'),
+                    `$form-resources/${base}/`
+                ]);
+                return [...patrones];
+            }
+            case 'auto':
+            default:
+                if (/-control$|-bind$/.test(q)) return patronesBusquedaXml(q);
+                if (/[<"']/.test(q)) return [q];
+                return [...new Set([...expandirPatronesBusqueda(q, 'campo'), q])];
+        }
+    }
+
+    function buscarPosicionesPorPatrones(patrones, { literal = false } = {}) {
         const xml = $('#textareaXml').value || xmlActual || '';
-        const lista = Array.isArray(terminos) ? terminos : [terminos];
         const resultados = [];
         const idxVistos = new Set();
-        for (const t of lista) {
-            if (!t) continue;
-            for (const p of patronesBusquedaXml(t)) {
-                let start = 0;
-                while (start < xml.length) {
-                    const idx = xml.indexOf(p, start);
-                    if (idx < 0) break;
-                    if (!idxVistos.has(idx)) {
-                        idxVistos.add(idx);
-                        resultados.push({
-                            idx,
-                            len: Math.min(p.length + 40, xml.length - idx),
-                            termino: t,
-                            patron: p
-                        });
-                    }
-                    start = idx + 1;
+        for (const p of patrones) {
+            if (!p) continue;
+            let start = 0;
+            while (start < xml.length) {
+                const idx = xml.indexOf(p, start);
+                if (idx < 0) break;
+                if (!idxVistos.has(idx)) {
+                    idxVistos.add(idx);
+                    resultados.push({
+                        idx,
+                        len: literal ? p.length : Math.min(p.length + 40, xml.length - idx),
+                        patron: p
+                    });
                 }
+                start = idx + 1;
             }
         }
         return resultados.sort((a, b) => a.idx - b.idx);
+    }
+
+    function buscarTodasPosicionesEnXml(terminos) {
+        const lista = Array.isArray(terminos) ? terminos : [terminos];
+        const patrones = [];
+        for (const t of lista) {
+            if (!t) continue;
+            patrones.push(...patronesBusquedaXml(t));
+        }
+        return buscarPosicionesPorPatrones(patrones);
+    }
+
+    function actualizarContadorBusquedaXml() {
+        const contador = $('#buscarXmlContador');
+        const btnPrev = $('#buscarXmlAnterior');
+        const btnNext = $('#buscarXmlSiguiente');
+        if (!xmlBusquedaPosiciones.length) {
+            contador.textContent = xmlBusquedaQuery ? '0' : '—';
+            btnPrev.disabled = true;
+            btnNext.disabled = true;
+            return;
+        }
+        contador.textContent = `${xmlBusquedaIndice + 1}/${xmlBusquedaPosiciones.length}`;
+        btnPrev.disabled = false;
+        btnNext.disabled = false;
+    }
+
+    function irABusquedaXml(indice) {
+        if (!xmlBusquedaPosiciones.length) return false;
+        const ta = $('#textareaXml');
+        if (!ta.value.trim() && xmlActual) ta.value = xmlActual;
+        xmlBusquedaIndice = ((indice % xmlBusquedaPosiciones.length) + xmlBusquedaPosiciones.length) % xmlBusquedaPosiciones.length;
+        const pos = xmlBusquedaPosiciones[xmlBusquedaIndice];
+        ta.focus();
+        const fin = Math.min(pos.idx + pos.len, ta.value.length);
+        ta.setSelectionRange(pos.idx, fin);
+        scrollTextareaASeleccion(ta);
+        actualizarContadorBusquedaXml();
+        actualizarResaltadoBusquedaXml();
+        return true;
+    }
+
+    function ejecutarBusquedaXml({ reiniciarIndice = true } = {}) {
+        const query = $('#buscarXml').value.trim();
+        const modo = $('#buscarXmlPatron').value;
+        xmlBusquedaQuery = query;
+        if (!query) {
+            xmlBusquedaPosiciones = [];
+            xmlBusquedaIndice = -1;
+            actualizarContadorBusquedaXml();
+            actualizarResaltadoBusquedaXml();
+            return;
+        }
+        if (!xmlActual && !$('#textareaXml').value.trim()) {
+            mostrarToast('Carga un XML primero', 'error');
+            return;
+        }
+        const literal = modo === 'libre';
+        const patrones = expandirPatronesBusqueda(query, modo);
+        xmlBusquedaPosiciones = buscarPosicionesPorPatrones(patrones, { literal });
+        if (!xmlBusquedaPosiciones.length) {
+            xmlBusquedaIndice = -1;
+            actualizarContadorBusquedaXml();
+            actualizarResaltadoBusquedaXml();
+            mostrarToast(`Sin coincidencias: ${query}`, 'info');
+            return;
+        }
+        const indice = reiniciarIndice ? 0 : Math.max(0, xmlBusquedaIndice);
+        irABusquedaXml(indice);
+        if (xmlBusquedaPosiciones.length > 1 && reiniciarIndice) {
+            mostrarToast(`${xmlBusquedaPosiciones.length} coincidencias · Enter/▶ siguiente`, 'info');
+        }
+    }
+
+    function navegarBusquedaXml(delta) {
+        if (!xmlBusquedaPosiciones.length) {
+            ejecutarBusquedaXml();
+            return;
+        }
+        irABusquedaXml(xmlBusquedaIndice + delta);
+    }
+
+    function refrescarBusquedaXmlTrasCambio() {
+        if ($('#buscarXml')?.value.trim()) ejecutarBusquedaXml({ reiniciarIndice: true });
+        else {
+            xmlBusquedaPosiciones = [];
+            xmlBusquedaIndice = -1;
+            xmlBusquedaQuery = '';
+            actualizarContadorBusquedaXml();
+            actualizarResaltadoBusquedaXml();
+        }
+    }
+
+    const PATRONES_CONTROL_NUM_CLIENTE = [
+        /<(?:\/)?(control-\d+)(?=[\s/>])/gi,
+        /id=["'](control-\d+)-(?:control|bind)["']/gi,
+        /(?:ref|name)=["'](control-\d+)["']/gi,
+        /\$form-resources\/(control-\d+)\//gi
+    ];
+
+    function detectarEtiquetasControlNumericoCliente(xml) {
+        const encontradas = new Map();
+        if (!xml) return [];
+        for (const re of PATRONES_CONTROL_NUM_CLIENTE) {
+            re.lastIndex = 0;
+            let m;
+            while ((m = re.exec(xml))) {
+                encontradas.set(m[1].toLowerCase(), true);
+            }
+        }
+        return [...encontradas.keys()].sort((a, b) => {
+            const na = parseInt(a.split('-')[1], 10);
+            const nb = parseInt(b.split('-')[1], 10);
+            return na - nb || a.localeCompare(b);
+        });
+    }
+
+    function construirListaControlesGenericos(nombres, xml = '') {
+        return (nombres || []).map(nombre => {
+            const item = {
+                nombre,
+                bindId: `${nombre}-bind`,
+                controlId: `${nombre}-control`,
+                ocurrencias: 0
+            };
+            if (xml) {
+                const agujas = [
+                    `<${nombre}>`, `<${nombre}/`, `id="${nombre}-bind"`, `id="${nombre}-control"`,
+                    `ref="${nombre}"`, `$form-resources/${nombre}/`
+                ];
+                item.ocurrencias = agujas.reduce((n, a) => {
+                    let i = 0, c = 0;
+                    while ((i = xml.indexOf(a, i)) >= 0) { c++; i++; }
+                    return n + c;
+                }, 0);
+            }
+            return item;
+        });
+    }
+
+    function asegurarControlesGenericosAnalizados() {
+        const xml = ($('#textareaXml')?.value || xmlActual || '').trim();
+        if (!xml) {
+            controlesGenericos = [];
+            return;
+        }
+        if (!controlesGenericos.length) {
+            controlesGenericos = construirListaControlesGenericos(
+                detectarEtiquetasControlNumericoCliente(xml), xml
+            );
+        }
+    }
+
+    function mostrarAvisoControlNumerico(etiquetas) {
+        const el = $('#xmlAvisoControlNumerico');
+        if (!el) return;
+        if (!etiquetas?.length) {
+            el.classList.add('hidden');
+            el.innerHTML = '';
+            return;
+        }
+        el.classList.remove('hidden');
+        el.innerHTML = `⚠ Se detectaron <strong>${etiquetas.length}</strong> etiqueta(s) genérica(s) <strong>control-N</strong>: `
+            + `<code class="text-amber-100">${escaparHtml(etiquetas.join(', '))}</code>. `
+            + `<button type="button" class="btn-ir-controles-genericos underline font-medium text-amber-100 hover:text-white ml-1">Ver lista y renombrar</button>`;
+    }
+
+    function construirHtmlResaltadoXml(texto, posiciones, indiceActivo) {
+        if (!texto) return '';
+        const n = texto.length;
+        const marcas = new Array(n).fill(null);
+        posiciones.forEach((p, i) => {
+            const tipo = i === indiceActivo ? 'active' : 'hit';
+            const fin = Math.min(p.idx + p.len, n);
+            for (let j = p.idx; j < fin; j++) {
+                marcas[j] = marcas[j] === 'active' || tipo === 'active' ? 'active' : 'hit';
+            }
+        });
+        let html = '';
+        let i = 0;
+        while (i < n) {
+            const tipo = marcas[i];
+            if (!tipo) {
+                const start = i;
+                while (i < n && !marcas[i]) i++;
+                html += escaparHtml(texto.slice(start, i));
+                continue;
+            }
+            const start = i;
+            while (i < n && marcas[i] === tipo) i++;
+            const clase = tipo === 'active' ? 'xml-hit-active' : 'xml-hit';
+            html += `<mark class="${clase}">${escaparHtml(texto.slice(start, i))}</mark>`;
+        }
+        return html;
+    }
+
+    function sincronizarScrollResaltadoXml() {
+        const ta = $('#textareaXml');
+        const layer = $('#xmlHighlightLayer');
+        if (!ta || !layer) return;
+        layer.scrollTop = ta.scrollTop;
+        layer.scrollLeft = ta.scrollLeft;
+    }
+
+    function actualizarResaltadoBusquedaXml() {
+        const ta = $('#textareaXml');
+        const layer = $('#xmlHighlightLayer');
+        if (!ta || !layer) return;
+        const texto = ta.value || '';
+        const html = xmlBusquedaPosiciones.length
+            ? construirHtmlResaltadoXml(texto, xmlBusquedaPosiciones, xmlBusquedaIndice)
+            : escaparHtml(texto);
+        layer.innerHTML = html + '\n';
+        sincronizarScrollResaltadoXml();
     }
 
     function buscarPosicionEnXml(terminos) {
@@ -704,6 +1057,7 @@
         if (posiciones.length > 1) {
             mostrarToast(`XML · ${posiciones.length} ocurrencias (clic en un ID para recorrerlas)`, 'info');
         }
+        actualizarResaltadoBusquedaXml();
         return true;
     }
 
@@ -721,6 +1075,9 @@
         }
         if (tipo === 'calculadora') {
             return [meta.bindId, meta.controlId, meta.ref, meta.ref + '-bind'].filter(Boolean);
+        }
+        if (tipo === 'control-generico') {
+            return [meta.controlId, meta.bindId, meta.nombre, meta.nombre + '-bind', meta.nombre + '-control'].filter(Boolean);
         }
         return [meta.id].filter(Boolean);
     }
@@ -741,7 +1098,11 @@
         xmlNavIndice = 0;
         $('#panelEditorCrud').classList.remove('hidden');
         $('#editorCrudTitulo').textContent = titulo;
-        $('#editorCrudAyuda').textContent = 'Modifique los valores, pulse Previsualizar para ver el formulario sin guardar, o Aplicar al XML para confirmar. Clic en Bind ID, Control, etc. para saltar a esa ocurrencia en el XML (repita el clic para la siguiente).';
+        const ayudas = {
+            'control-generico': 'Indique un nombre descriptivo y pulse Aplicar al XML. Se renombran instancia, bind, control y fr-form-resources. Clic en los IDs para localizar en el código.'
+        };
+        $('#editorCrudAyuda').textContent = ayudas[tipo]
+            || 'Modifique los valores, pulse Previsualizar para ver el formulario sin guardar, o Aplicar al XML para confirmar. Clic en Bind ID, Control, etc. para saltar a esa ocurrencia en el XML (repita el clic para la siguiente).';
         renderizarFormularioEditor();
         if ($('#textareaXml').value.trim() || xmlActual) {
             irACodigoXml(editorCrudActivo.anchors, false);
@@ -819,6 +1180,24 @@
                     ${(meta.descripcionesFuentes || []).map(d => `<span class="inline-block mr-1 px-1.5 py-0.5 bg-sky-50 rounded">${escaparHtml(d)}</span>`).join('')}
                 </div>` : ''}
                 <p class="text-[10px] text-slate-400">Deje vacío y use «Quitar calculate» en la pestaña Calculadoras para eliminar la regla.</p>`;
+        } else if (tipo === 'control-generico') {
+            form.innerHTML = `
+                ${campoEditor('Nombre actual (instancia)', 'ed-nombre', meta.nombre || '', { readonly: true, campo: 'nombre', xmlNav: true })}
+                ${campoEditor('Bind ID', 'ed-bindId', meta.bindId || '', { readonly: true, campo: 'bindId', xmlNav: true })}
+                ${campoEditor('Control ID', 'ed-controlId', meta.controlId || '', { readonly: true, campo: 'controlId', xmlNav: true })}
+                ${campoEditor('Tipo control', 'ed-tipoControl', meta.tipoControl || '—', { readonly: true, campo: 'tipoControl' })}
+                ${campoEditor('Ocurrencias en XML', 'ed-ocurrencias', String(meta.ocurrencias ?? ''), { readonly: true, campo: 'ocurrencias' })}
+                ${campoEditor('Nuevo nombre', 'ed-nombreNuevo', meta.nombreNuevo || '', { campo: 'nombreNuevo' })}
+                <p class="text-[10px] text-slate-500">Renombra instancia, bind, control y <code>fr-form-resources</code>. No use el patrón <code>control-N</code>.</p>
+                <p id="ed-previewIds" class="text-[10px] font-mono text-orbeon-700 bg-orbeon-50 rounded px-2 py-1"></p>`;
+            const preview = $('#ed-previewIds');
+            const actualizarPreview = () => {
+                const nn = leerValorEditor('nombreNuevo') || '…';
+                preview.textContent = `Tras aplicar: ${nn}-bind · ${nn}-control · <${nn}>`;
+            };
+            document.querySelector('#editorCrudForm [data-campo="nombreNuevo"]')
+                ?.addEventListener('input', actualizarPreview);
+            actualizarPreview();
         }
         $('#editorCrudDescartar').classList.toggle('hidden', !previewBorradorActivo);
     }
@@ -873,6 +1252,16 @@
                 } else {
                     changes.push({ type: 'update-calculator', bindId, calculate: calculate.trim() });
                 }
+            }
+        } else if (tipo === 'control-generico') {
+            const nombreActual = leerValorEditor('nombre') || meta.nombre;
+            const nombreNuevo = leerValorEditor('nombreNuevo');
+            if (nombreNuevo && nombreNuevo !== nombreActual) {
+                if (/^control-\d+$/i.test(nombreNuevo)) {
+                    mostrarToast('El nuevo nombre no puede ser control-N', 'error');
+                    return [];
+                }
+                changes.push({ type: 'rename-control-numeric', nombreActual, nombreNuevo });
             }
         }
         return changes;
@@ -964,7 +1353,9 @@
         renderizarChangelog();
         snapshotAntesPreview = null;
         activarBannerPreview(false);
-        if (editorCrudActivo) {
+        if (editorCrudActivo?.tipo === 'control-generico') {
+            cerrarEditorCrud();
+        } else if (editorCrudActivo) {
             Object.assign(editorCrudActivo.meta, leerMetaActualizadaEditor());
             renderizarFormularioEditor();
         }
@@ -983,9 +1374,12 @@
         if (t === 'seccion' || t === 'dependencia') {
             return { expresionRelevant: leerValorEditor('relevant'), relevant: leerValorEditor('relevant') };
         }
-        if (t === 'calculadora') {
+        if (tipo === 'calculadora') {
             const ta = document.querySelector('#editorCrudForm [data-campo="calculate"]');
             return { expresionCalculate: ta ? ta.value : '', calculate: ta ? ta.value : '' };
+        }
+        if (t === 'control-generico') {
+            return { nombreNuevo: leerValorEditor('nombreNuevo') };
         }
         return {};
     }
@@ -1145,14 +1539,15 @@
     }
 
     /* --- Pestañas panel izquierdo --- */
-    const tabsIzq = { guiado: 'tabGuiado', asistente: 'tabAsistente', secciones: 'tabSecciones', dependencias: 'tabDependencias', calculadoras: 'tabCalculadoras', modificar: 'tabModificar', changelog: 'tabChangelog', codigo: 'tabCodigo' };
+    const tabsIzq = { guiado: 'tabGuiado', asistente: 'tabAsistente', secciones: 'tabSecciones', dependencias: 'tabDependencias', calculadoras: 'tabCalculadoras', controlesGenericos: 'tabControlesGenericos', modificar: 'tabModificar', changelog: 'tabChangelog', codigo: 'tabCodigo' };
     Object.keys(tabsIzq).forEach(t => {
         document.getElementById(tabsIzq[t]).addEventListener('click', () => cambiarTab(t));
     });
 
     function cambiarTab(tab) {
         tabIzqActiva = tab;
-        const paneles = { guiado: 'panelGuiado', asistente: 'panelAsistente', secciones: 'panelSecciones', dependencias: 'panelDependencias', calculadoras: 'panelCalculadoras', modificar: 'panelModificar', changelog: 'panelChangelog', codigo: 'panelCodigo' };
+        const paneles = { guiado: 'panelGuiado', asistente: 'panelAsistente', secciones: 'panelSecciones', dependencias: 'panelDependencias', calculadoras: 'panelCalculadoras', controlesGenericos: 'panelControlesGenericos', modificar: 'panelModificar', changelog: 'panelChangelog', codigo: 'panelCodigo' };
+        if (tab === 'controlesGenericos') asegurarControlesGenericosAnalizados();
         Object.entries(paneles).forEach(([k, id]) => {
             document.getElementById(id).classList.toggle('hidden', k !== tab);
             document.getElementById(tabsIzq[k]).classList.toggle('tab-active', k === tab);
@@ -1166,6 +1561,50 @@
     $('#buscarSecciones').addEventListener('input', (e) => { filtroSecciones = e.target.value.toLowerCase(); renderizarSecciones(); });
     $('#buscarDependencias').addEventListener('input', (e) => { filtroDependencias = e.target.value.toLowerCase(); renderizarDependencias(); });
     $('#buscarCalculadoras').addEventListener('input', (e) => { filtroCalculadoras = e.target.value.toLowerCase(); renderizarCalculadoras(); });
+    $('#buscarControlesGenericos').addEventListener('input', (e) => { filtroControlesGenericos = e.target.value.toLowerCase(); renderizarControlesGenericos(); });
+    document.addEventListener('click', (e) => {
+        if (e.target.closest('.btn-ir-controles-genericos')) cambiarTab('controlesGenericos');
+    });
+
+    let buscarXmlTimer = null;
+    $('#buscarXml').addEventListener('input', () => {
+        clearTimeout(buscarXmlTimer);
+        buscarXmlTimer = setTimeout(() => ejecutarBusquedaXml(), 280);
+    });
+    $('#buscarXml').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            if (e.shiftKey) navegarBusquedaXml(-1);
+            else if (xmlBusquedaPosiciones.length) navegarBusquedaXml(1);
+            else ejecutarBusquedaXml();
+        } else if (e.key === 'Escape') {
+            e.target.value = '';
+            xmlBusquedaPosiciones = [];
+            xmlBusquedaIndice = -1;
+            xmlBusquedaQuery = '';
+            actualizarContadorBusquedaXml();
+            actualizarResaltadoBusquedaXml();
+        }
+    });
+    $('#buscarXmlPatron').addEventListener('change', () => ejecutarBusquedaXml());
+    $('#buscarXmlSiguiente').addEventListener('click', () => navegarBusquedaXml(1));
+    $('#buscarXmlAnterior').addEventListener('click', () => navegarBusquedaXml(-1));
+    $('#textareaXml').addEventListener('scroll', sincronizarScrollResaltadoXml);
+    $('#textareaXml').addEventListener('input', () => {
+        if ($('#buscarXml').value.trim()) {
+            clearTimeout(buscarXmlTimer);
+            buscarXmlTimer = setTimeout(() => ejecutarBusquedaXml({ reiniciarIndice: false }), 320);
+        } else {
+            actualizarResaltadoBusquedaXml();
+        }
+    });
+    document.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'f' && tabIzqActiva === 'codigo') {
+            e.preventDefault();
+            $('#buscarXml').focus();
+            $('#buscarXml').select();
+        }
+    });
 
     /* --- Pestañas panel derecho (Diseño / PDF) --- */
     $('#tabPreview').addEventListener('click', () => cambiarTabPreview('preview'));
@@ -1631,6 +2070,23 @@
         calculadoras = data.calculadoras || null;
         xmlActual = data.xml || '';
         $('#textareaXml').value = xmlActual;
+
+        controlesGenericos = data.controlesGenericos?.length
+            ? data.controlesGenericos
+            : construirListaControlesGenericos(
+                (data.etiquetasControlNumerico?.length
+                    ? data.etiquetasControlNumerico
+                    : detectarEtiquetasControlNumericoCliente(xmlActual)),
+                xmlActual
+            );
+
+        mostrarAvisoControlNumerico(
+            data.etiquetasControlNumerico?.length
+                ? data.etiquetasControlNumerico
+                : controlesGenericos.map(c => c.nombre)
+        );
+        refrescarBusquedaXmlTrasCambio();
+        actualizarResaltadoBusquedaXml();
         if (resetChangelog) changeLog = [];
         renderizarComponentes();
         renderizarSecciones();
@@ -1640,6 +2096,7 @@
         renderizarDesplegablesAsistente();
         renderizarDependencias();
         renderizarCalculadoras();
+        renderizarControlesGenericos();
         if (!tabPreviewActiva) {
             generarVistaPdf();
         }
@@ -1834,6 +2291,77 @@
                     mostrarFeedbackDependencia(err.message, 'error');
                     mostrarToast(err.message, 'error');
                 }
+            });
+        });
+    }
+
+    /* --- Controles genéricos control-N --- */
+    function abrirEditorCrudControlGenerico(ctrl) {
+        abrirEditorCrud('control-generico', {
+            nombre: ctrl.nombre,
+            bindId: ctrl.bindId,
+            controlId: ctrl.controlId,
+            tipoControl: ctrl.tipoControl,
+            ocurrencias: ctrl.ocurrencias,
+            titulo: ctrl.nombre
+        });
+    }
+
+    function renderizarControlesGenericos() {
+        asegurarControlesGenericosAnalizados();
+        const lista = $('#listaControlesGenericos');
+        const resumen = $('#ctrlGenResumen');
+        const cnt = $('#cntControlesGenericos');
+        cnt.textContent = controlesGenericos.length;
+        cnt.classList.toggle('hidden', !controlesGenericos.length);
+
+        if (!xmlActual) {
+            lista.innerHTML = '<p class="text-slate-400 text-xs text-center py-8">Carga un XML para detectar controles genéricos</p>';
+            resumen.innerHTML = '';
+            return;
+        }
+        if (!controlesGenericos.length) {
+            lista.innerHTML = '<p class="text-emerald-600 text-xs text-center py-8">✓ No hay etiquetas control-N en este formulario</p>';
+            resumen.innerHTML = '<span class="px-2 py-0.5 bg-emerald-50 rounded border border-emerald-200 text-emerald-800">0 detectados</span>';
+            return;
+        }
+
+        resumen.innerHTML = `
+            <span class="px-2 py-0.5 bg-amber-100 rounded border border-amber-300 text-amber-900">${controlesGenericos.length} control(es) genérico(s)</span>
+            <span class="px-2 py-0.5 bg-white rounded border border-slate-200">Clic en una fila para renombrar</span>`;
+
+        const filtro = filtroControlesGenericos.toLowerCase();
+        const items = controlesGenericos.filter(c => {
+            if (!filtro) return true;
+            const blob = `${c.nombre} ${c.bindId} ${c.controlId} ${c.tipoControl || ''}`.toLowerCase();
+            return blob.includes(filtro);
+        });
+
+        if (!items.length) {
+            lista.innerHTML = '<p class="text-slate-400 text-xs text-center py-6">Sin coincidencias</p>';
+            return;
+        }
+
+        lista.innerHTML = items.map(c => `
+            <article class="ctrl-gen-item border border-amber-200 rounded-lg p-3 bg-white shadow-sm clickable-result cursor-pointer hover:border-orbeon-400 hover:bg-amber-50/40"
+                     data-ctrl-nombre="${escaparHtml(c.nombre)}" title="Clic para abrir editor CRUD y renombrar">
+                <div class="flex flex-wrap items-center gap-2 mb-1">
+                    <span class="text-xs font-semibold text-amber-900 font-mono">&lt;${escaparHtml(c.nombre)}&gt;</span>
+                    ${c.tipoControl ? `<span class="text-[10px] px-1.5 py-0.5 bg-slate-100 rounded">${escaparHtml(c.tipoControl)}</span>` : ''}
+                    ${c.ocurrencias ? `<span class="text-[10px] text-slate-500">${c.ocurrencias} refs en XML</span>` : ''}
+                </div>
+                <div class="text-[10px] font-mono text-slate-600 space-y-0.5">
+                    <div>bind: <span class="text-orbeon-700">${escaparHtml(c.bindId)}</span></div>
+                    <div>control: <span class="text-orbeon-700">${escaparHtml(c.controlId)}</span></div>
+                </div>
+            </article>
+        `).join('');
+
+        lista.querySelectorAll('.ctrl-gen-item').forEach(art => {
+            art.addEventListener('click', () => {
+                const nombre = art.dataset.ctrlNombre;
+                const ctrl = controlesGenericos.find(c => c.nombre === nombre);
+                if (ctrl) abrirEditorCrudControlGenerico(ctrl);
             });
         });
     }
@@ -2598,6 +3126,35 @@
             <span class="px-3 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">~${c.modificados} modificados</span>
             <span class="px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600">=${c.sinCambios} iguales</span>
         `;
+
+        const ctrlBase = c.etiquetasControlNumericoBase || [];
+        const ctrlNuevo = c.etiquetasControlNumericoNuevo || [];
+        const ctrlAnad = c.etiquetasControlNumericoAnadidas || [];
+        const ctrlElim = c.etiquetasControlNumericoEliminadas || [];
+        const panelCtrl = $('#compararControlNumerico');
+        if (ctrlBase.length || ctrlNuevo.length) {
+            panelCtrl.classList.remove('hidden');
+            const partes = [];
+            if (ctrlBase.length) {
+                partes.push(`<div><span class="font-semibold">Base</span>: <code>${escaparHtml(ctrlBase.join(', '))}</code></div>`);
+            }
+            if (ctrlNuevo.length) {
+                partes.push(`<div><span class="font-semibold">Nuevo</span>: <code>${escaparHtml(ctrlNuevo.join(', '))}</code></div>`);
+            }
+            if (ctrlAnad.length) {
+                partes.push(`<div class="text-emerald-800 mt-1">+ Etiquetas <code>control-N</code> añadidas: <code>${escaparHtml(ctrlAnad.join(', '))}</code></div>`);
+            }
+            if (ctrlElim.length) {
+                partes.push(`<div class="text-red-800 mt-1">− Etiquetas <code>control-N</code> eliminadas: <code>${escaparHtml(ctrlElim.join(', '))}</code></div>`);
+            }
+            if (!ctrlAnad.length && !ctrlElim.length && ctrlBase.length && ctrlNuevo.length) {
+                partes.push('<div class="mt-1 text-amber-800">Mismas etiquetas <code>control-N</code> en ambos XML (revisar si deben renombrarse).</div>');
+            }
+            panelCtrl.innerHTML = `<div class="font-semibold mb-1">⚠ Etiquetas genéricas control-N detectadas</div>${partes.join('')}`;
+        } else {
+            panelCtrl.classList.add('hidden');
+            panelCtrl.innerHTML = '';
+        }
 
         const lista = $('#listaComparacion');
         lista.innerHTML = '';

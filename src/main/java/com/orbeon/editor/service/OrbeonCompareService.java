@@ -4,6 +4,7 @@ import com.orbeon.editor.dto.ComparacionResponse;
 import com.orbeon.editor.model.CambioCampo;
 import com.orbeon.editor.model.ComponenteFormulario;
 import com.orbeon.editor.model.DiferenciaComponente;
+import com.orbeon.editor.util.OrbeonXmlUtil;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -86,7 +87,26 @@ public class OrbeonCompareService {
         respuesta.setModificados(modificados);
         respuesta.setSinCambios(sinCambios);
         respuesta.setDiferencias(diferencias);
+
+        List<String> ctrlBase = OrbeonXmlUtil.detectarEtiquetasControlNumerico(xmlBase);
+        List<String> ctrlNuevo = OrbeonXmlUtil.detectarEtiquetasControlNumerico(xmlNuevo);
+        respuesta.setEtiquetasControlNumericoBase(ctrlBase);
+        respuesta.setEtiquetasControlNumericoNuevo(ctrlNuevo);
+        respuesta.setEtiquetasControlNumericoAnadidas(diffEtiquetas(ctrlNuevo, ctrlBase));
+        respuesta.setEtiquetasControlNumericoEliminadas(diffEtiquetas(ctrlBase, ctrlNuevo));
+
         return respuesta;
+    }
+
+    private List<String> diffEtiquetas(List<String> en, List<String> noEn) {
+        Set<String> excluir = new TreeSet<>(noEn);
+        List<String> diff = new ArrayList<>();
+        for (String tag : en) {
+            if (!excluir.contains(tag)) {
+                diff.add(tag);
+            }
+        }
+        return diff;
     }
 
     private Map<String, ComponenteFormulario> indexarPorId(List<ComponenteFormulario> componentes) {

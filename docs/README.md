@@ -15,6 +15,7 @@ Editor visual de plantillas XML de **Orbeon Form Runner** para lectura, edición
 | [07 — Dependencias de secciones](07-dependencias-secciones.md) | Visibilidad condicional (`relevant`), pestaña Dependencias y CRUD |
 | [08 — Editor CRUD contextual y preview](08-editor-crud-contextual-y-preview.md) | Clic en resultados → XML + CRUD + previsualizar antes de guardar |
 | [09 — Calculadoras XForms](09-calculadoras-xforms.md) | `xf:bind @calculate`: inventario, tipos y edición en plantilla 684/480 |
+| [10 — Controles genéricos y búsqueda XML](10-controles-genericos-y-busqueda-xml.md) | Detección `control-N`, renombrado CRUD y buscador en Código XML |
 | [Diagramas UML](diagramas/) | Fuentes PlantUML (casos de uso, clases, componentes, secuencia) |
 
 ## Stack tecnológico
@@ -40,8 +41,13 @@ Guía detallada: **[06 — HOWTO arranque y CRUD](06-howto-arranque-y-crud.md)**
 
 ## Archivos de ejemplo
 
+Plantillas Orbeon de prueba (`.txt`, `.pdf`) se usan en local y **no se versionan** (ver `.gitignore`: `*.txt`, `*.pdf`). Ejemplos habituales en el equipo:
+
 - `684_F1b_MIXTO_480_Solicitud_PRE.txt` — plantilla base
+- `688_F1b_CTCON_2792_Solicitud_PRE_ini.txt` — incluye `control-1` genérico
 - `684_F1b_MIXTO_480_Solicitud_v39.txt` — versión alternativa para comparación
+
+Cárguelos con **Cargar XML base** desde su copia local.
 
 ## Funcionalidades principales
 
@@ -52,6 +58,8 @@ Guía detallada: **[06 — HOWTO arranque y CRUD](06-howto-arranque-y-crud.md)**
 - **Asistente en lenguaje natural** (pestaña «Asistente»): logos, desplegables CRUD, labels/hints
 - **Dependencias de secciones** (pestaña «Dependencias»): análisis y CRUD de `xf:bind @relevant`
 - **Calculadoras XForms** (pestaña «Calculadoras»): inventario de `xf:bind @calculate`, fuentes de datos y CRUD
+- **Controles genéricos** (pestaña «Controles N»): detección de `control-N`, renombrado CRUD y aviso en comparador
+- **Búsqueda en Código XML** con resaltado, patrones Orbeon y navegación desde el CRUD
 - **Editor CRUD contextual**: clic en logos, campos, secciones o dependencias → XML localizado + previsualización antes de guardar
 - Análisis de logos con posición en sección
 

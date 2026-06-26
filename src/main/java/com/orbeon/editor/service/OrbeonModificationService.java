@@ -69,6 +69,7 @@ public class OrbeonModificationService {
             case "remove-select-item" -> removeSelectItem(doc, change);
             case "add-image" -> addImage(doc, change);
             case "update-section-relevant" -> updateSectionRelevant(doc, change);
+            case "rename-control-numeric" -> renameControlNumeric(doc, change);
             default -> throw new IllegalArgumentException("Tipo desconocido: " + type);
         };
     }
@@ -111,6 +112,19 @@ public class OrbeonModificationService {
         }
         bindEl.setAttribute("relevant", relevant.trim());
         return "Relevant actualizado en " + bindId + " → " + relevant.trim();
+    }
+
+    private String renameControlNumeric(Document doc, Map<String, Object> change) {
+        String nombreActual = (String) change.get("nombreActual");
+        if (nombreActual == null) {
+            nombreActual = (String) change.get("nombre");
+        }
+        String nombreNuevo = (String) change.get("nombreNuevo");
+        if (nombreNuevo == null) {
+            nombreNuevo = (String) change.get("nuevoNombre");
+        }
+        OrbeonXmlUtil.renombrarEtiquetaControlNumerico(doc, nombreActual, nombreNuevo);
+        return "Renombrado control genérico " + nombreActual + " → " + nombreNuevo.trim();
     }
 
     private String updateLabel(Document doc, Map<String, Object> change) {
@@ -510,7 +524,8 @@ public class OrbeonModificationService {
                         "update-select-item → fieldId, value, label?, newValue?",
                         "remove-select-item → fieldId, value",
                         "add-image       → imageTag, src?, filename?, mediatype?, sectionId?, label?",
-                        "update-section-relevant → bindId|sectionId, relevant | removeRelevant:true"
+                        "update-section-relevant → bindId|sectionId, relevant | removeRelevant:true",
+                        "rename-control-numeric → nombreActual, nombreNuevo"
                 ),
                 "exampleFile", Map.of("changes", List.of(
                         Map.of("type", "update-label", "fieldId", "personaFisica-nombre", "label", "Nombre completo"),

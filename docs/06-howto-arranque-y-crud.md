@@ -575,16 +575,43 @@ curl -X POST http://localhost:8080/api/formulario/analizar-dependencias \
 
 ---
 
+## Parte 8b — Controles genéricos `control-N`
+
+Si el XML contiene campos `control-1`, `control-2`, etc.:
+
+1. Pestaña **Controles N** (badge ámbar si hay detecciones).
+2. Clic en la fila → CRUD con **Nuevo nombre**.
+3. **Aplicar al XML** ejecuta `rename-control-numeric`.
+
+También: aviso en **Código XML** → **Ver lista y renombrar**.
+
+Guía completa: [10-controles-genericos-y-busqueda-xml.md](10-controles-genericos-y-busqueda-xml.md).
+
+---
+
+## Parte 8c — Búsqueda en Código XML
+
+En la pestaña **Código XML**:
+
+- Barra de búsqueda con patrones (Auto, texto libre, campo completo, id control/bind, instancia).
+- Coincidencias resaltadas en amarillo; activa en naranja.
+- `Ctrl+F`, `Enter` / `Shift+Enter`, botones ◀/▶.
+
+Los campos de ID en el CRUD son clicables para saltar al XML sin usar el buscador.
+
+---
+
 ## Parte 9 — Tabla resumen: formas de editar
 
 | Forma | Mejor para | Persiste en XML al instante |
 |-------|------------|----------------------------|
-| **Editor CRUD contextual** (clic en resultado) | Logos, campos, secciones, dependencias; preview antes de guardar | Al **Aplicar al XML** |
+| **Editor CRUD contextual** (clic en resultado) | Logos, campos, secciones, dependencias, **control-N**; preview antes de guardar | Al **Aplicar al XML** |
+| **Controles N** | Renombrar `control-N` → nombre descriptivo | Al **Aplicar al XML** |
 | **Lista** + Exportar | Edición visual masiva de labels/hints/alerts | Al exportar |
 | **Dependencias** (inline) | Reglas de visibilidad sin preview | Al guardar |
 | **Modificar JSON** | Lotes, CI/CD, cambios complejos | Al aplicar |
 | **Asistente** | Consultas y órdenes en español | Al ejecutar (si «Aplicar» activo) |
-| **Código XML** manual | Expertos Orbeon | Tras **Sincronizar** |
+| **Código XML** manual + buscador | Expertos Orbeon; localizar por patrón con resaltado | Tras **Sincronizar** (edición manual) |
 
 ---
 

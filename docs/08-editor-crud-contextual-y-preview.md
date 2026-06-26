@@ -107,6 +107,8 @@ El panel CRUD traduce los valores del formulario a entradas del array `changes[]
 | Logo | `update-image` | `imageTag`, `src`, `filename`, `mediatype` |
 | Campo / desplegable | `update-label`, `update-hint`, `update-resource` | `fieldId`, textos |
 | Sección / dependencia | `update-section-relevant` | `bindId`, `sectionId`, `relevant` o `removeRelevant: true` |
+| Calculadora | `update-calculator` | `bindId`, `calculate` o `removeCalculate: true` |
+| Control genérico `control-N` | `rename-control-numeric` | `nombreActual`, `nombreNuevo` |
 
 Endpoints implicados:
 
@@ -126,7 +128,7 @@ Archivo: `src/main/resources/static/index.html`
 | `#panelEditorCrud` | Panel inferior con formulario y botones |
 | `#bannerPreviewBorrador` | Aviso de borrador en Vista Diseño |
 | `abrirEditorCrud(tipo, meta)` | Abre panel y localiza XML |
-| `irACodigoXml(terminos)` | Cambia a pestaña Código XML y selecciona texto |
+| `irACodigoXml(terminos)` | Selección en Código XML; IDs del formulario CRUD son clicables (`data-xml-nav`) |
 | `previsualizarEditorCrud()` | Borrador sin persistir `xmlActual` |
 | `aplicarEditorCrud()` | Persiste cambios |
 | `descartarPreviewBorrador()` | Restaura snapshot |
@@ -162,5 +164,6 @@ Los demás campos siguen en solo lectura (`preview-input` con `pointer-events: n
 
 - [06 — HOWTO arranque y CRUD](06-howto-arranque-y-crud.md)
 - [07 — Dependencias de secciones](07-dependencias-secciones.md)
+- [10 — Controles genéricos y búsqueda XML](10-controles-genericos-y-busqueda-xml.md)
 - [04 — Documentación de desarrollador](04-documentacion-desarrollador.md) — API y frontend
 - [03 — Casos de uso](03-casos-de-uso.md) — CU-13

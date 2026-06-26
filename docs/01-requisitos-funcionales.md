@@ -42,7 +42,7 @@
 |----|-----------|-----------|--------|
 | RF-020 | El usuario debe poder editar label y hint de un componente desde la lista guiada. | Alta | Implementado |
 | RF-021 | Las modificaciones deben aplicarse al XML en `fr-form-resources`, no solo en la vista. | Alta | Implementado |
-| RF-022 | El sistema debe soportar un motor de cambios tipados vía JSON (`changes[]`) con tipos: `update-label`, `update-hint`, `update-text`, `update-image`, `hide-section`, `show-section`, `update-resource`, `update-bind`, `update-calculator`, `remove-field`, `add-field`, `add-select-item`, `update-select-item`, `remove-select-item`, `add-image`, `update-section-relevant`. | Alta | Implementado |
+| RF-022 | El sistema debe soportar un motor de cambios tipados vía JSON (`changes[]`) con tipos: `update-label`, `update-hint`, `update-text`, `update-image`, `hide-section`, `show-section`, `update-resource`, `update-bind`, `update-calculator`, `remove-field`, `add-field`, `add-select-item`, `update-select-item`, `remove-select-item`, `add-image`, `update-section-relevant`, `rename-control-numeric`. | Alta | Implementado |
 | RF-023 | El usuario debe poder pegar o cargar un fichero JSON de modificaciones y aplicarlo. | Media | Implementado |
 | RF-024 | El sistema debe registrar un changelog de cambios aplicados en la sesión de edición. | Media | Implementado |
 | RF-025 | El endpoint `GET /api/formulario/esquema-modificaciones` debe documentar el formato JSON de cambios. | Baja | Implementado |
@@ -99,6 +99,22 @@ Guía de usuario: [09-calculadoras-xforms.md](09-calculadoras-xforms.md).
 
 ---
 
+## 3e. Controles genéricos `control-N` y búsqueda XML
+
+| ID | Requisito | Prioridad | Estado |
+|----|-----------|-----------|--------|
+| RF-080 | Al cargar o sincronizar XML, el sistema debe detectar campos con patrón `control-N` (etiquetas, ids `-bind`/`-control`, resources). | Alta | Implementado |
+| RF-081 | La pestaña **Controles N** debe listar los campos genéricos con bind, control, tipo y recuento de referencias. | Alta | Implementado |
+| RF-082 | El usuario debe poder renombrar un `control-N` mediante CRUD (`rename-control-numeric`) actualizando instancia, bind, control y resources. | Alta | Implementado |
+| RF-083 | La pestaña **Código XML** debe incluir buscador con patrones Orbeon, resaltado visual y navegación ◀/▶. | Alta | Implementado |
+| RF-084 | Los IDs en el panel CRUD deben ser clicables para localizar ocurrencias en el XML. | Media | Implementado |
+| RF-085 | El comparador de XML debe informar de etiquetas `control-N` en base/nuevo y diferencias entre versiones. | Media | Implementado |
+| RF-086 | `FormularioResponse` debe incluir `controlesGenericos` y `etiquetasControlNumerico`. | Media | Implementado |
+
+Guía de usuario: [10-controles-genericos-y-busqueda-xml.md](10-controles-genericos-y-busqueda-xml.md).
+
+---
+
 ## 4. Comparación de versiones
 
 | ID | Requisito | Prioridad | Estado |
@@ -108,6 +124,7 @@ Guía de usuario: [09-calculadoras-xforms.md](09-calculadoras-xforms.md).
 | RF-032 | La comparación debe detectar componentes añadidos, eliminados y modificados por `id`. | Alta | Implementado |
 | RF-033 | Para componentes modificados, el sistema debe detallar cambios en label, hint, alert, tipo y appearance. | Alta | Implementado |
 | RF-034 | La comparación debe mostrar resumen numérico (totales, añadidos, eliminados, modificados, sin cambios). | Media | Implementado |
+| RF-035 | Si el XML contiene etiquetas `control-N`, el comparador debe listarlas y mostrar diferencias entre versiones. | Media | Implementado |
 
 ---
 

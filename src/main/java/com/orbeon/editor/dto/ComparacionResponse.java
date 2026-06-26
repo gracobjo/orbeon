@@ -16,6 +16,10 @@ public class ComparacionResponse {
     private int modificados;
     private int sinCambios;
     private List<DiferenciaComponente> diferencias = new ArrayList<>();
+    private List<String> etiquetasControlNumericoBase = new ArrayList<>();
+    private List<String> etiquetasControlNumericoNuevo = new ArrayList<>();
+    private List<String> etiquetasControlNumericoAnadidas = new ArrayList<>();
+    private List<String> etiquetasControlNumericoEliminadas = new ArrayList<>();
 
     public String getNombreBase() {
         return nombreBase;
@@ -87,5 +91,41 @@ public class ComparacionResponse {
 
     public void setDiferencias(List<DiferenciaComponente> diferencias) {
         this.diferencias = diferencias != null ? diferencias : new ArrayList<>();
+    }
+
+    public List<String> getEtiquetasControlNumericoBase() {
+        return etiquetasControlNumericoBase;
+    }
+
+    public void setEtiquetasControlNumericoBase(List<String> etiquetasControlNumericoBase) {
+        this.etiquetasControlNumericoBase = etiquetasControlNumericoBase != null
+                ? etiquetasControlNumericoBase : new ArrayList<>();
+    }
+
+    public List<String> getEtiquetasControlNumericoNuevo() {
+        return etiquetasControlNumericoNuevo;
+    }
+
+    public void setEtiquetasControlNumericoNuevo(List<String> etiquetasControlNumericoNuevo) {
+        this.etiquetasControlNumericoNuevo = etiquetasControlNumericoNuevo != null
+                ? etiquetasControlNumericoNuevo : new ArrayList<>();
+    }
+
+    public List<String> getEtiquetasControlNumericoAnadidas() {
+        return etiquetasControlNumericoAnadidas;
+    }
+
+    public void setEtiquetasControlNumericoAnadidas(List<String> etiquetasControlNumericoAnadidas) {
+        this.etiquetasControlNumericoAnadidas = etiquetasControlNumericoAnadidas != null
+                ? etiquetasControlNumericoAnadidas : new ArrayList<>();
+    }
+
+    public List<String> getEtiquetasControlNumericoEliminadas() {
+        return etiquetasControlNumericoEliminadas;
+    }
+
+    public void setEtiquetasControlNumericoEliminadas(List<String> etiquetasControlNumericoEliminadas) {
+        this.etiquetasControlNumericoEliminadas = etiquetasControlNumericoEliminadas != null
+                ? etiquetasControlNumericoEliminadas : new ArrayList<>();
     }
 }
