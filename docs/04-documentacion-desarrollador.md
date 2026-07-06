@@ -86,7 +86,7 @@ orbeon/
             └── OrbeonXmlUtilTest.java
 ```
 
-**`.gitignore` relevante:** `target/`, `.tools/` excepto JARs de Maven (`!/.tools/**/*.jar`), `*.pdf` y `*.txt` (plantillas Orbeon locales de prueba no se suben al repositorio).
+**`.gitignore` relevante:** `target/`, `.tools/` excepto JARs de Maven (`!/.tools/**/*.jar`), `*.pdf` y `/*.txt` (plantillas Orbeon en la raíz del proyecto; no se suben al repositorio).
 
 ---
 

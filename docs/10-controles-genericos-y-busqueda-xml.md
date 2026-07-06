@@ -161,7 +161,7 @@ Clase de dominio: `EtiquetaControlNumerico`. Tests: `OrbeonXmlUtilTest`.
 
 ## 7. Archivos de plantilla de prueba
 
-Los XML de ejemplo (p. ej. `688_F1b_CTCON_2792_Solicitud_PRE_ini.txt`) se mantienen **en local** y están excluidos del repositorio Git (`.gitignore`: `*.txt`, `*.pdf`). Para probar, cargue el archivo desde **Cargar XML base** sin commitearlo.
+Los XML de ejemplo (p. ej. `688_F1b_CTCON_2792_Solicitud_PRE_ini.txt` en la raíz) se mantienen **en local** y están excluidos del repositorio Git (`.gitignore`: `/*.txt`, `*.pdf`). Para probar, cargue el archivo desde **Cargar XML base** sin commitearlo.
 
 ---
 

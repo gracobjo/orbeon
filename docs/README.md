@@ -44,7 +44,7 @@ mvn spring-boot:run
 
 ## Archivos de ejemplo
 
-Plantillas Orbeon de prueba (`.txt`, `.pdf`) se usan en local y **no se versionan** (ver `.gitignore`: `*.txt`, `*.pdf`). Ejemplos habituales en el equipo:
+Plantillas Orbeon de prueba (`.txt` en la raíz, `.pdf`) se usan en local y **no se versionan** (ver `.gitignore`: `/*.txt`, `*.pdf`). Ejemplos habituales en el equipo:
 
 - `684_F1b_MIXTO_480_Solicitud_PRE.txt` — plantilla base
 - `688_F1b_CTCON_2792_Solicitud_PRE_ini.txt` — incluye `control-1` genérico
