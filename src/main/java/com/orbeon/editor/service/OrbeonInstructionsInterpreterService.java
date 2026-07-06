@@ -2,9 +2,13 @@ package com.orbeon.editor.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.orbeon.editor.dto.AnalisisInstruccionesResponse;
+import com.orbeon.editor.dto.ComparacionInstruccionesResponse;
 import com.orbeon.editor.dto.ModificacionResponse;
 import com.orbeon.editor.model.AnotacionInstruccionPdf;
+import com.orbeon.editor.model.EstructuraFormulario;
 import com.orbeon.editor.model.PropuestaCambioXml;
 import com.orbeon.editor.util.OrbeonXmlUtil;
 import org.springframework.core.io.ClassPathResource;
@@ -26,22 +30,33 @@ import java.util.Set;
 
 /**
  * Interpreta anotaciones de un PDF de instrucciones y las traduce a cambios XML Orbeon.
- * Usa reglas lingüísticas + catálogo de referencia del formulario 684 (v39→PRE).
+ * El catálogo de reglas se genera desde el XML cargado (cualquier formulario).
+ * Opcionalmente fusiona reglas estáticas del 684 si existen en classpath.
  */
 @Service
 public class OrbeonInstructionsInterpreterService {
 
     private static final String CATALOGO_684 = "datos/instrucciones-684-mapeo.json";
+    private static final int COINCIDENCIA_MIN = 12;
 
     private final OrbeonPdfInstructionsService pdfInstructionsService;
     private final OrbeonModificationService modificationService;
+    private final OrbeonInstructionsCatalogBuilder catalogBuilder;
+    private final OrbeonInstructionsStructureService structureService;
+    private final OrbeonStructureService orbeonStructureService;
     private final ObjectMapper objectMapper;
 
     public OrbeonInstructionsInterpreterService(OrbeonPdfInstructionsService pdfInstructionsService,
                                                  OrbeonModificationService modificationService,
+                                                 OrbeonInstructionsCatalogBuilder catalogBuilder,
+                                                 OrbeonInstructionsStructureService structureService,
+                                                 OrbeonStructureService orbeonStructureService,
                                                  ObjectMapper objectMapper) {
         this.pdfInstructionsService = pdfInstructionsService;
         this.modificationService = modificationService;
+        this.catalogBuilder = catalogBuilder;
+        this.structureService = structureService;
+        this.orbeonStructureService = orbeonStructureService;
         this.objectMapper = objectMapper;
     }
 
@@ -51,7 +66,8 @@ public class OrbeonInstructionsInterpreterService {
         }
 
         List<AnotacionInstruccionPdf> anotaciones = pdfInstructionsService.extraerAnotaciones(pdfBytes);
-        JsonNode catalogo = cargarCatalogo684();
+        ObjectNode catalogo = catalogBuilder.construirDesdeXml(xml);
+        fusionarCatalogoEstatico(catalogo, cargarCatalogo684());
 
         List<PropuestaCambioXml> propuestas = new ArrayList<>();
         Set<String> cambiosVistos = new HashSet<>();
@@ -60,7 +76,10 @@ public class OrbeonInstructionsInterpreterService {
         propuestas.addAll(resolverDeclaraciones(anotaciones, catalogo, xml, cambiosVistos));
         propuestas.addAll(resolverAnexos(anotaciones, catalogo, xml, cambiosVistos));
         propuestas.addAll(resolverTextos(anotaciones, catalogo, xml, cambiosVistos));
+        propuestas.addAll(resolverSustitucionesGenericas(anotaciones, xml, cambiosVistos));
+        propuestas.addAll(resolverInsercionesGenericas(anotaciones, xml, cambiosVistos));
         propuestas.addAll(resolverEliminacionesGenericas(anotaciones, xml, cambiosVistos));
+        propuestas = deduplicarPropuestas(propuestas);
 
         List<Map<String, Object>> agregados = new ArrayList<>();
         Set<String> clavesCambio = new HashSet<>();
@@ -83,15 +102,131 @@ public class OrbeonInstructionsInterpreterService {
         resp.setAnotaciones(anotaciones);
         resp.setPropuestas(propuestas);
         resp.setCambiosAgregados(agregados);
-        resp.setResumen(construirResumen(propuestas, agregados));
+        resp.setResumen(construirResumen(propuestas, agregados, catalogo));
+        resp.setNombreFormulario(catalogo.path("formulario").asText("formulario"));
         resp.setXml(xml);
+        try {
+            EstructuraFormulario estructura = orbeonStructureService.parsearEstructuraCompleta(xml);
+            resp.setEstructura(estructura);
+            resp.setEstructuraInstrucciones(structureService.construir(
+                    xml, resp.getNombreFormulario(), anotaciones, propuestas));
+        } catch (Exception ignored) {
+            // estructura opcional si el XML no es parseable
+        }
 
         if (aplicar && !agregados.isEmpty()) {
             ModificacionResponse mod = modificationService.aplicarCambios(xml, agregados);
             resp.setXml(mod.getXml());
             resp.setLogAplicados(mod.getChangeLog());
+            try {
+                EstructuraFormulario estructura = orbeonStructureService.parsearEstructuraCompleta(mod.getXml());
+                resp.setEstructura(estructura);
+            } catch (Exception ignored) {
+                // mantener estructura previa
+            }
         }
         return resp;
+    }
+
+    public ComparacionInstruccionesResponse compararPdfs(byte[] pdfBase, String nombreBase,
+                                                          byte[] pdfNuevo, String nombreNuevo,
+                                                          String xml) {
+        AnalisisInstruccionesResponse base = analizar(pdfBase, nombreBase, xml, false);
+        AnalisisInstruccionesResponse nuevo = analizar(pdfNuevo, nombreNuevo, xml, false);
+
+        ComparacionInstruccionesResponse resp = new ComparacionInstruccionesResponse();
+        resp.setAnalisisBase(base);
+        resp.setAnalisisNuevo(nuevo);
+
+        Map<String, AnotacionInstruccionPdf> mapaBase = indexarAnotaciones(base.getAnotaciones());
+        Map<String, AnotacionInstruccionPdf> mapaNuevo = indexarAnotaciones(nuevo.getAnotaciones());
+
+        for (Map.Entry<String, AnotacionInstruccionPdf> e : mapaBase.entrySet()) {
+            if (mapaNuevo.containsKey(e.getKey())) {
+                resp.getAnotacionesComunes().add(e.getValue());
+            } else {
+                resp.getAnotacionesSoloBase().add(e.getValue());
+            }
+        }
+        for (Map.Entry<String, AnotacionInstruccionPdf> e : mapaNuevo.entrySet()) {
+            if (!mapaBase.containsKey(e.getKey())) {
+                resp.getAnotacionesSoloNuevo().add(e.getValue());
+            }
+        }
+
+        Map<String, PropuestaCambioXml> propBase = indexarPropuestas(base.getPropuestas());
+        Map<String, PropuestaCambioXml> propNuevo = indexarPropuestas(nuevo.getPropuestas());
+        for (Map.Entry<String, PropuestaCambioXml> e : propBase.entrySet()) {
+            if (propNuevo.containsKey(e.getKey())) {
+                // común por id
+            } else {
+                resp.getPropuestasSoloBase().add(e.getValue());
+            }
+        }
+        for (Map.Entry<String, PropuestaCambioXml> e : propNuevo.entrySet()) {
+            if (!propBase.containsKey(e.getKey())) {
+                resp.getPropuestasSoloNuevo().add(e.getValue());
+            }
+        }
+
+        Set<String> camposBase = camposDePropuestas(base.getPropuestas());
+        Set<String> camposNuevo = camposDePropuestas(nuevo.getPropuestas());
+        for (String c : camposBase) {
+            if (camposNuevo.contains(c)) {
+                resp.getCamposComunes().add(c);
+            } else {
+                resp.getCamposSoloBase().add(c);
+            }
+        }
+        for (String c : camposNuevo) {
+            if (!camposBase.contains(c)) {
+                resp.getCamposSoloNuevo().add(c);
+            }
+        }
+
+        resp.setResumen(
+                "PDF base: " + base.getNombrePdf() + " (" + base.getTotalAnotaciones() + " anot., "
+                        + base.getPropuestas().size() + " prop.) · "
+                        + "PDF nuevo: " + nuevo.getNombrePdf() + " (" + nuevo.getTotalAnotaciones() + " anot., "
+                        + nuevo.getPropuestas().size() + " prop.) · "
+                        + "Anot. solo base: " + resp.getAnotacionesSoloBase().size()
+                        + ", solo nuevo: " + resp.getAnotacionesSoloNuevo().size()
+                        + ", comunes: " + resp.getAnotacionesComunes().size()
+                        + " · Campos solo base: " + resp.getCamposSoloBase().size()
+                        + ", solo nuevo: " + resp.getCamposSoloNuevo().size()
+                        + ", comunes: " + resp.getCamposComunes().size());
+        return resp;
+    }
+
+    private Map<String, AnotacionInstruccionPdf> indexarAnotaciones(List<AnotacionInstruccionPdf> anotaciones) {
+        Map<String, AnotacionInstruccionPdf> mapa = new LinkedHashMap<>();
+        for (AnotacionInstruccionPdf a : anotaciones) {
+            mapa.put(claveAnotacion(a), a);
+        }
+        return mapa;
+    }
+
+    private String claveAnotacion(AnotacionInstruccionPdf a) {
+        return a.getPagina() + "|" + normalizar(a.getContenido());
+    }
+
+    private Map<String, PropuestaCambioXml> indexarPropuestas(List<PropuestaCambioXml> propuestas) {
+        Map<String, PropuestaCambioXml> mapa = new LinkedHashMap<>();
+        for (PropuestaCambioXml p : propuestas) {
+            String id = p.getId() != null ? p.getId() : p.getDescripcion();
+            mapa.put(id, p);
+        }
+        return mapa;
+    }
+
+    private Set<String> camposDePropuestas(List<PropuestaCambioXml> propuestas) {
+        Set<String> campos = new HashSet<>();
+        for (PropuestaCambioXml p : propuestas) {
+            if (p.getCamposAfectados() != null) {
+                campos.addAll(p.getCamposAfectados());
+            }
+        }
+        return campos;
     }
 
     private String claveCambio(Map<String, Object> cambio) {
@@ -119,6 +254,10 @@ public class OrbeonInstructionsInterpreterService {
         String textoAnotaciones = textoConsolidado(anotaciones);
         for (JsonNode regla : catalogo.get("reglasApartado")) {
             if (!coincideRegla(textoAnotaciones, regla)) {
+                continue;
+            }
+            boolean esEstatica = "estatico".equals(regla.path("origen").asText());
+            if (!esEstatica && !anotaciones.stream().anyMatch(this::anotacionSolicitaEliminacionApartado)) {
                 continue;
             }
             PropuestaCambioXml propuesta = new PropuestaCambioXml();
@@ -171,18 +310,23 @@ public class OrbeonInstructionsInterpreterService {
             return resultado;
         }
 
-        boolean hayEliminar = anotaciones.stream().anyMatch(this::esEliminarDeclaracion);
-        if (!hayEliminar) {
-            return resultado;
-        }
-
-        // Solo reglas del catálogo con campos concretos (p. ej. ROAC, plazos de pago).
-        // No inferir una eliminación por cada anotación genérica «eliminar declaración».
         for (JsonNode regla : catalogo.get("reglasDeclaracion")) {
             if (!regla.has("camposEliminar") || regla.get("camposEliminar").isEmpty()) {
                 continue;
             }
-            PropuestaCambioXml propuesta = construirEliminacionCatalogo(regla, xml);
+            String fragmento = regla.path("fragmentoTexto").asText("");
+            if (fragmento.isBlank()) {
+                continue;
+            }
+            boolean esEstatica = "estatico".equals(regla.path("origen").asText());
+            if (esEstatica) {
+                if (!anotaciones.stream().anyMatch(this::esEliminarDeclaracion)) {
+                    continue;
+                }
+            } else if (!hayAnotacionParaEliminarFragmento(anotaciones, fragmento)) {
+                continue;
+            }
+            PropuestaCambioXml propuesta = construirEliminacionCatalogo(regla, xml, anotaciones);
             if (!propuesta.getCambios().isEmpty()) {
                 resultado.add(propuesta);
             }
@@ -226,13 +370,7 @@ public class OrbeonInstructionsInterpreterService {
                     if (!textoAnexoPresente(xml, fragmento)) {
                         continue;
                     }
-                    boolean pedido = anotaciones.stream().anyMatch(a -> {
-                        String c = normalizar(a.getContenido());
-                        return (c.contains("eliminar") && c.contains("documento"))
-                                || (a.getSubtipo().toLowerCase(Locale.ROOT).contains("strike")
-                                && a.getPagina() == 5);
-                    });
-                    if (!pedido) {
+                    if (!hayAnotacionParaEliminarFragmento(anotaciones, regla.path("fragmentoTexto").asText())) {
                         continue;
                     }
                     PropuestaCambioXml propuesta = construirEliminacionAnexo(regla, anotaciones, xml);
@@ -305,9 +443,9 @@ public class OrbeonInstructionsInterpreterService {
                     resultado.add(propuesta);
                 }
             } else if (regla.has("camposEliminar")) {
-                boolean pedido = anotaciones.stream().anyMatch(a ->
-                        normalizar(a.getContenido()).contains("eliminar"));
-                if (!pedido) {
+                String fragmento = regla.path("fragmentoDeteccion").asText(
+                        regla.path("fragmentoTexto").asText(""));
+                if (fragmento.isBlank() || !hayAnotacionParaEliminarFragmento(anotaciones, fragmento)) {
                     continue;
                 }
                 PropuestaCambioXml propuesta = new PropuestaCambioXml();
@@ -332,7 +470,10 @@ public class OrbeonInstructionsInterpreterService {
                 }
             } else if (regla.has("fieldId") && regla.has("descripcion")) {
                 String fieldId = regla.path("fieldId").asText();
-                if (existeControl(xml, fieldId) && textoAnotaciones.contains("eliminar")) {
+                String fragmento = regla.path("fragmentoDeteccion").asText(
+                        regla.path("descripcion").asText(""));
+                if (existeControl(xml, fieldId)
+                        && hayAnotacionParaEliminarFragmento(anotaciones, fragmento)) {
                     PropuestaCambioXml propuesta = new PropuestaCambioXml();
                     propuesta.setId(regla.path("id").asText());
                     propuesta.setIntencion("eliminar-campo");
@@ -388,9 +529,9 @@ public class OrbeonInstructionsInterpreterService {
             if (norm.contains("eliminar") && norm.contains("apartado") && norm.contains("documento")) {
                 continue;
             }
-            if (norm.contains("eliminar") && norm.contains("documento") && !norm.contains("declaracion")) {
-                String campo = resolverCampoPorProximidadTexto(xml, anot);
-                if (campo != null && existeControl(xml, campo)) {
+            if (anotacionSolicitaEliminacion(anot) || esStrike(anot)) {
+                String campo = resolverCampoPorCoincidenciaTexto(xml, anot);
+                if (campo != null && existeControl(xml, campo) && cambiosVistos.add("remove-field:" + campo)) {
                     PropuestaCambioXml propuesta = new PropuestaCambioXml();
                     propuesta.setId("eliminar-doc-" + campo);
                     propuesta.setIntencion("eliminar-documento");
@@ -408,27 +549,67 @@ public class OrbeonInstructionsInterpreterService {
         return resultado;
     }
 
-    private String resolverCampoPorProximidadTexto(String xml, AnotacionInstruccionPdf anot) {
-        Map<String, String> textosAnexo = extraerTextosResources(xml, "anexos-texto");
+    private String resolverCampoPorCoincidenciaTexto(String xml, AnotacionInstruccionPdf anot) {
+        Map<String, String> textos = extraerTodosTextosResources(xml);
         String mejor = null;
-        float mejorDist = Float.MAX_VALUE;
-        for (Map.Entry<String, String> entry : textosAnexo.entrySet()) {
-            if (anotacionCercaDeTexto(anot, entry.getValue())) {
-                float dist = Math.abs(anot.getPosicionVertical() - 300);
-                if (dist < mejorDist) {
-                    mejorDist = dist;
-                    mejor = entry.getKey().replace("anexos-texto", "anexos-") + "-control";
-                    if (!mejor.contains("-control")) {
-                        mejor = entry.getKey() + "-control";
-                    }
-                    String checkbox = entry.getKey().replace("anexos-texto", "anexos-") + "-control";
-                    if (existeControl(xml, checkbox)) {
-                        mejor = checkbox;
-                    }
-                }
+        int mejorPuntuacion = 0;
+        for (Map.Entry<String, String> entry : textos.entrySet()) {
+            if (!anotacionCercaDeTexto(anot, entry.getValue())) {
+                continue;
+            }
+            int score = puntuacionCoincidencia(anot.getContenido(), entry.getValue());
+            if (score > mejorPuntuacion) {
+                mejorPuntuacion = score;
+                mejor = resolverControlParaRecurso(entry.getKey(), xml);
             }
         }
         return mejor;
+    }
+
+    private String resolverControlParaRecurso(String resourceId, String xml) {
+        List<String> candidatos = List.of(
+                resourceId + "-control",
+                resourceId.replace("-texto", "-") + "-control"
+        );
+        for (String c : candidatos) {
+            if (existeControl(xml, c)) {
+                return c;
+            }
+        }
+        if (resourceId.startsWith("anexos-texto")) {
+            String base = resourceId.substring("anexos-texto".length());
+            String anexo = "anexos-" + base + "-control";
+            if (existeControl(xml, anexo)) {
+                return anexo;
+            }
+        }
+        int dash = resourceId.indexOf("-texto");
+        if (dash > 0) {
+            String sufijo = resourceId.substring(dash + 5);
+            String prefijo = resourceId.substring(0, dash);
+            String control = prefijo + "-" + sufijo + "-control";
+            if (existeControl(xml, control)) {
+                return control;
+            }
+        }
+        return null;
+    }
+
+    private int puntuacionCoincidencia(String anotacion, String textoXml) {
+        String a = normalizar(anotacion);
+        String t = normalizar(desescaparHtml(textoXml));
+        if (a.isBlank() || t.isBlank()) {
+            return 0;
+        }
+        if (a.contains(t.substring(0, Math.min(30, t.length()))) || t.contains(a.substring(0, Math.min(30, a.length())))) {
+            return 100;
+        }
+        return Math.min(a.length(), t.length());
+    }
+
+    @SuppressWarnings("unused")
+    private String resolverCampoPorProximidadTexto(String xml, AnotacionInstruccionPdf anot) {
+        return resolverCampoPorCoincidenciaTexto(xml, anot);
     }
 
     private boolean anotacionCercaDeTexto(AnotacionInstruccionPdf anot, String textoXml) {
@@ -443,6 +624,10 @@ public class OrbeonInstructionsInterpreterService {
         String contenido = normalizar(anot.getContenido());
         return contenido.contains(fragmento)
                 || (contenido.length() > 25 && limpio.contains(contenido.substring(0, Math.min(25, contenido.length()))));
+    }
+
+    private Map<String, String> extraerTodosTextosResources(String xml) {
+        return extraerTextosResources(xml, null);
     }
 
     private Map<String, String> extraerTextosResources(String xml, String prefijo) {
@@ -461,7 +646,7 @@ public class OrbeonInstructionsInterpreterService {
                         continue;
                     }
                     String name = el.getLocalName();
-                    if (!name.startsWith(prefijo)) {
+                    if (prefijo != null && !name.startsWith(prefijo)) {
                         continue;
                     }
                     Element textEl = primerHijo(el, "text");
@@ -501,13 +686,15 @@ public class OrbeonInstructionsInterpreterService {
         return null;
     }
 
-    private PropuestaCambioXml construirEliminacionCatalogo(JsonNode regla, String xml) {
+    private PropuestaCambioXml construirEliminacionCatalogo(JsonNode regla, String xml,
+                                                           List<AnotacionInstruccionPdf> anotaciones) {
         PropuestaCambioXml propuesta = new PropuestaCambioXml();
         propuesta.setId(regla.path("id").asText());
         propuesta.setIntencion("eliminar-declaracion");
         propuesta.setDescripcion("Eliminar declaración: " + regla.path("fragmentoTexto").asText(""));
         propuesta.setConfianza("alta");
         propuesta.setAplicableAutomaticamente(true);
+        propuesta.setTextoInstruccion(buscarTextoAnotacionPorFragmento(anotaciones, regla.path("fragmentoTexto").asText()));
         List<Map<String, Object>> cambios = new ArrayList<>();
         List<String> campos = new ArrayList<>();
         for (JsonNode campo : regla.get("camposEliminar")) {
@@ -527,9 +714,7 @@ public class OrbeonInstructionsInterpreterService {
         if (norm.contains("eliminar") && norm.contains("declaracion")) {
             return true;
         }
-        return anot.getSubtipo().toLowerCase(Locale.ROOT).contains("strike")
-                && anot.getPagina() == 4
-                && norm.contains("eliminar");
+        return esStrike(anot) && norm.contains("eliminar");
     }
 
     private boolean existeControl(String xml, String fieldId) {
@@ -582,12 +767,203 @@ public class OrbeonInstructionsInterpreterService {
         return sb.toString().trim();
     }
 
-    private String construirResumen(List<PropuestaCambioXml> propuestas, List<Map<String, Object>> agregados) {
+    private String construirResumen(List<PropuestaCambioXml> propuestas,
+                                    List<Map<String, Object>> agregados,
+                                    JsonNode catalogo) {
         long automaticas = propuestas.stream().filter(PropuestaCambioXml::isAplicableAutomaticamente).count();
         long manuales = propuestas.size() - automaticas;
-        return propuestas.size() + " propuestas interpretadas ("
+        String formulario = catalogo != null ? catalogo.path("formulario").asText("formulario") : "formulario";
+        return "Formulario «" + formulario + "» (catálogo derivado del XML). "
+                + propuestas.size() + " propuestas interpretadas ("
                 + automaticas + " automáticas, " + manuales + " manuales). "
                 + agregados.size() + " cambios XML agregados.";
+    }
+
+    private void fusionarCatalogoEstatico(ObjectNode destino, JsonNode estatico) {
+        if (estatico == null || destino == null) {
+            return;
+        }
+        fusionarArrayReglas(destino, estatico, "reglasApartado");
+        fusionarArrayReglas(destino, estatico, "reglasDeclaracion");
+        fusionarArrayReglas(destino, estatico, "reglasAnexo");
+        fusionarArrayReglas(destino, estatico, "reglasTexto");
+    }
+
+    private void fusionarArrayReglas(ObjectNode destino, JsonNode estatico, String clave) {
+        if (!estatico.has(clave)) {
+            return;
+        }
+        ArrayNode arrayDest = destino.has(clave) ? (ArrayNode) destino.get(clave) : destino.putArray(clave);
+        Set<String> ids = new HashSet<>();
+        arrayDest.forEach(n -> ids.add(n.path("id").asText()));
+        for (JsonNode regla : estatico.get(clave)) {
+            String id = regla.path("id").asText();
+            if (!id.isBlank() && ids.add(id)) {
+                if (regla instanceof ObjectNode obj) {
+                    ObjectNode copia = obj.deepCopy();
+                    copia.put("origen", "estatico");
+                    arrayDest.add(copia);
+                } else {
+                    arrayDest.add(regla);
+                }
+            }
+        }
+    }
+
+    private List<PropuestaCambioXml> deduplicarPropuestas(List<PropuestaCambioXml> propuestas) {
+        List<PropuestaCambioXml> unicas = new ArrayList<>();
+        Set<String> vistas = new HashSet<>();
+        for (PropuestaCambioXml p : propuestas) {
+            String clave = p.getId() != null ? p.getId() : p.getDescripcion();
+            for (Map<String, Object> c : p.getCambios()) {
+                clave = clave + "|" + claveCambio(c);
+            }
+            if (vistas.add(clave)) {
+                unicas.add(p);
+            }
+        }
+        return unicas;
+    }
+
+    private List<PropuestaCambioXml> resolverSustitucionesGenericas(List<AnotacionInstruccionPdf> anotaciones,
+                                                                     String xml, Set<String> cambiosVistos) {
+        List<PropuestaCambioXml> resultado = new ArrayList<>();
+        Map<String, String> textos = extraerTodosTextosResources(xml);
+        for (AnotacionInstruccionPdf anot : anotaciones) {
+            String norm = normalizar(anot.getContenido());
+            if (!norm.contains("sustituir") && !norm.contains("cambiar por") && !norm.contains("reemplazar")) {
+                continue;
+            }
+            for (Map.Entry<String, String> entry : textos.entrySet()) {
+                if (!anotacionCercaDeTexto(anot, entry.getValue())) {
+                    continue;
+                }
+                String nuevoTexto = extraerTextoSustitucion(anot.getContenido());
+                if (nuevoTexto == null || nuevoTexto.isBlank()) {
+                    continue;
+                }
+                String fieldId = entry.getKey();
+                String clave = "sustituir:" + fieldId;
+                if (!cambiosVistos.add(clave)) {
+                    continue;
+                }
+                PropuestaCambioXml propuesta = new PropuestaCambioXml();
+                propuesta.setId(clave);
+                propuesta.setIntencion("sustituir-texto");
+                propuesta.setDescripcion("Sustituir texto en " + fieldId);
+                propuesta.setTextoInstruccion(anot.getContenido());
+                propuesta.setPagina(anot.getPagina());
+                propuesta.setConfianza("media");
+                propuesta.setAplicableAutomaticamente(true);
+                propuesta.setCamposAfectados(List.of(fieldId));
+                propuesta.setCambios(List.of(Map.of(
+                        "type", "update-resource",
+                        "fieldId", fieldId,
+                        "resourceType", "text",
+                        "value", nuevoTexto
+                )));
+                resultado.add(propuesta);
+            }
+        }
+        return resultado;
+    }
+
+    private String extraerTextoSustitucion(String contenido) {
+        if (contenido == null) {
+            return null;
+        }
+        String lower = contenido.toLowerCase(Locale.ROOT);
+        int por = lower.indexOf(" por ");
+        if (por >= 0 && por + 4 < contenido.length()) {
+            return contenido.substring(por + 4).trim();
+        }
+        if (contenido.contains("«") && contenido.contains("»")) {
+            int ini = contenido.indexOf('«');
+            int fin = contenido.indexOf('»', ini + 1);
+            if (fin > ini) {
+                return contenido.substring(ini + 1, fin).trim();
+            }
+        }
+        if (contenido.contains("<div") || contenido.contains("<p")) {
+            return contenido.trim();
+        }
+        return null;
+    }
+
+    private List<PropuestaCambioXml> resolverInsercionesGenericas(List<AnotacionInstruccionPdf> anotaciones,
+                                                                     String xml, Set<String> cambiosVistos) {
+        List<PropuestaCambioXml> resultado = new ArrayList<>();
+        for (AnotacionInstruccionPdf anot : anotaciones) {
+            String norm = normalizar(anot.getContenido());
+            boolean marcador = norm.contains("insertar") || norm.contains("anadir") || norm.contains("añadir")
+                    || norm.matches(".*\\*\\s*\\d+.*") || norm.contains("anexo ");
+            if (!marcador) {
+                continue;
+            }
+            String clave = "insertar:" + normalizar(anot.getContenido()).hashCode();
+            if (!cambiosVistos.add(clave)) {
+                continue;
+            }
+            PropuestaCambioXml propuesta = new PropuestaCambioXml();
+            propuesta.setId(clave);
+            propuesta.setIntencion("insertar-campo");
+            propuesta.setDescripcion("Alta o inserción indicada en PDF (revisar manualmente)");
+            propuesta.setTextoInstruccion(anot.getContenido());
+            propuesta.setPagina(anot.getPagina());
+            propuesta.setConfianza("media");
+            propuesta.setAplicableAutomaticamente(false);
+            propuesta.setNota("Copie la estructura del control desde el XML objetivo o Form Builder.");
+            resultado.add(propuesta);
+        }
+        return resultado;
+    }
+
+    private boolean hayAnotacionParaEliminarFragmento(List<AnotacionInstruccionPdf> anotaciones, String fragmento) {
+        if (fragmento == null || fragmento.isBlank()) {
+            return false;
+        }
+        return anotaciones.stream().anyMatch(a ->
+                (anotacionSolicitaEliminacion(a) || esStrike(a))
+                        && coincideFragmento(a.getContenido(), fragmento));
+    }
+
+    private boolean coincideFragmento(String anotacion, String fragmento) {
+        String a = normalizar(anotacion);
+        String f = normalizar(desescaparHtml(fragmento));
+        if (a.isBlank() || f.isBlank()) {
+            return false;
+        }
+        if (a.contains(f) || f.contains(a)) {
+            return Math.min(a.length(), f.length()) >= COINCIDENCIA_MIN;
+        }
+        String fCorto = f.substring(0, Math.min(f.length(), 50));
+        String aCorto = a.substring(0, Math.min(a.length(), 50));
+        return a.contains(fCorto) || f.contains(aCorto);
+    }
+
+    private boolean anotacionSolicitaEliminacion(AnotacionInstruccionPdf anot) {
+        String norm = normalizar(anot.getContenido());
+        return norm.contains("eliminar") || norm.contains("quitar") || norm.contains("suprimir")
+                || norm.contains("tachar");
+    }
+
+    private boolean anotacionSolicitaEliminacionApartado(AnotacionInstruccionPdf anot) {
+        String norm = normalizar(anot.getContenido());
+        return norm.contains("eliminar") && (norm.contains("apartado") || norm.contains("seccion") || norm.contains("sección"));
+    }
+
+    private boolean esStrike(AnotacionInstruccionPdf anot) {
+        return anot.getSubtipo() != null
+                && anot.getSubtipo().toLowerCase(Locale.ROOT).contains("strike");
+    }
+
+    private String buscarTextoAnotacionPorFragmento(List<AnotacionInstruccionPdf> anotaciones, String fragmento) {
+        for (AnotacionInstruccionPdf anot : anotaciones) {
+            if (coincideFragmento(anot.getContenido(), fragmento)) {
+                return anot.getContenido();
+            }
+        }
+        return null;
     }
 
     private Element primerHijo(Element padre, String localName) {

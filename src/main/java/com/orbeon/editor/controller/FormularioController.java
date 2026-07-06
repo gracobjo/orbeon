@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.orbeon.editor.dto.AnalisisInstruccionesResponse;
+import com.orbeon.editor.dto.ComparacionInstruccionesResponse;
 import com.orbeon.editor.dto.CumplimentarInstanciaRequest;
 import com.orbeon.editor.dto.ComparacionResponse;
 import com.orbeon.editor.dto.FormularioResponse;
@@ -344,6 +345,35 @@ public class FormularioController {
             throw e;
         } catch (Exception e) {
             throw new IllegalArgumentException("Error al analizar instrucciones PDF: " + e.getMessage(), e);
+        }
+    }
+
+    @PostMapping(value = "/comparar-instrucciones-pdf", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ComparacionInstruccionesResponse compararInstruccionesPdf(
+            @RequestParam("pdfBase") MultipartFile pdfBase,
+            @RequestParam("pdfNuevo") MultipartFile pdfNuevo,
+            @RequestParam("xml") String xml) {
+        if (pdfBase == null || pdfBase.isEmpty()) {
+            throw new IllegalArgumentException("El PDF base es obligatorio");
+        }
+        if (pdfNuevo == null || pdfNuevo.isEmpty()) {
+            throw new IllegalArgumentException("El PDF nuevo es obligatorio");
+        }
+        if (xml == null || xml.isBlank()) {
+            throw new IllegalArgumentException("El XML del formulario es obligatorio");
+        }
+        try {
+            return instructionsInterpreterService.compararPdfs(
+                    pdfBase.getBytes(),
+                    pdfBase.getOriginalFilename() != null ? pdfBase.getOriginalFilename() : "base.pdf",
+                    pdfNuevo.getBytes(),
+                    pdfNuevo.getOriginalFilename() != null ? pdfNuevo.getOriginalFilename() : "nuevo.pdf",
+                    xml
+            );
+        } catch (IllegalArgumentException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Error al comparar instrucciones PDF: " + e.getMessage(), e);
         }
     }
 

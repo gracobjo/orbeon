@@ -38,6 +38,8 @@ El frontend (`index.html`) solo habla con el backend local:
 | `/api/formulario/esquema-modificaciones` | GET | Documentación JSON |
 | `/api/formulario/lenguaje-natural` | POST | Asistente en español |
 | `/api/formulario/analizar-logos` | POST | Inventario de logos |
+| `/api/formulario/analizar-instrucciones-pdf` | POST | Analizar PDF de instrucciones → propuestas XML |
+| `/api/formulario/comparar-instrucciones-pdf` | POST | Comparar dos PDFs de instrucciones |
 
 Base URL por defecto: `http://localhost:8080`
 

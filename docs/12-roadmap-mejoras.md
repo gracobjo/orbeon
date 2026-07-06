@@ -49,9 +49,9 @@ Estas acciones reducirían tiempo y errores en el flujo real **instrucciones PDF
 | ID | Mejora | Por qué | Estado |
 |----|--------|---------|--------|
 | M-020 | Ampliar catálogo `instrucciones-684-mapeo.json` con reglas pendientes del PDF | Cobertura incompleta → trabajo manual | pendiente |
-| M-021 | Catálogos para **otros formularios** (688, etc.) con selector en UI | Hoy solo 684/480 | pendiente |
+| M-021 | Catálogo **auto desde XML** para cualquier formulario (jun 2026); catálogos estáticos como complemento opcional | Implementado | hecho |
 | M-022 | Nivel **baja** confianza + filtro en modal | Diferenciar inferencias débiles | pendiente |
-| M-023 | Vista lado a lado: **anotación PDF** (texto + página) ↔ **campo XML** | Revisar propuestas **media** más rápido | pendiente |
+| M-023 | Vista lado a lado: **anotación PDF** (texto + página) ↔ **campo XML** | Revisar propuestas **media** más rápido | parcial (pestaña Estructura en modal) |
 | M-024 | Test de regresión con PDF real versionado en repo (o fixture mínimo) | Evitar regresiones del intérprete | pendiente |
 
 ### P2 — Colaboración y trazabilidad
@@ -106,7 +106,9 @@ Para no duplicar esfuerzo, esto **ya está operativo** (junio 2026):
 - [x] CRUD contextual + preview
 - [x] Búsqueda XML resaltada
 - [x] Comparador (sesión y dos archivos)
-- [x] Análisis PDF instrucciones 684/480 + catálogo + tests
+- [x] Análisis PDF instrucciones + catálogo dinámico desde XML + tests
+- [x] Modal PDF: pestañas Estructura y XML formulario
+- [x] Comparar dos PDFs de instrucciones sobre el mismo XML
 - [x] API REST documentada
 - [x] Despliegue JAR portable
 - [x] UI header unificada (botones azul orbeon)

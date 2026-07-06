@@ -17,7 +17,7 @@ Editor visual de plantillas XML de **Orbeon Form Runner** para lectura, edición
 | [08 — Editor CRUD contextual y preview](08-editor-crud-contextual-y-preview.md) | Clic en resultados → XML + CRUD + previsualizar antes de guardar |
 | [09 — Calculadoras XForms](09-calculadoras-xforms.md) | `xf:bind @calculate`: inventario, tipos y edición en plantilla 684/480 |
 | [10 — Controles genéricos y búsqueda XML](10-controles-genericos-y-busqueda-xml.md) | Detección `control-N`, renombrado CRUD y buscador en Código XML |
-| [11 — Análisis PDF instrucciones](11-analisis-pdf-instrucciones.md) | Anotaciones del PDF → propuestas XML, catálogo 684, API y etiquetas |
+| [11 — Análisis PDF instrucciones](11-analisis-pdf-instrucciones.md) | Anotaciones del PDF → propuestas XML, estructura, comparación de PDFs y API |
 | [12 — Roadmap y mejoras](12-roadmap-mejoras.md) | Pendientes, eficiencia y orden de implementación recomendado |
 | [Diagramas UML](diagramas/) | Fuentes PlantUML (casos de uso, clases, componentes, secuencia) |
 
@@ -63,7 +63,7 @@ Cárguelos con **Cargar XML base** desde su copia local.
 - **Calculadoras XForms** (pestaña «Calculadoras»): inventario de `xf:bind @calculate`, fuentes de datos y CRUD
 - **Controles genéricos** (pestaña «Controles N»): detección de `control-N`, renombrado CRUD y aviso en comparador
 - **Búsqueda en Código XML** con resaltado, patrones Orbeon y navegación desde el CRUD
-- **Análisis de PDF de instrucciones** (barra superior): anotaciones de margen → cambios XML con catálogo 684/480; modal con etiquetas Auto/Revisar y confianza alta/media
+- **Análisis de PDF de instrucciones** (barra superior): anotaciones → cambios XML con catálogo dinámico; modal con pestañas Propuestas, Estructura y XML; comparación entre dos PDFs de instrucciones
 - **Comparador** en barra superior (sustituye carga JSON del header; JSON en pestaña Modificar JSON)
 - **Editor CRUD contextual**: clic en logos, campos, secciones o dependencias → XML localizado + previsualización antes de guardar
 - Análisis de logos con posición en sección

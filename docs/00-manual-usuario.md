@@ -56,7 +56,7 @@ Todos los botones de acción usan el **mismo azul** (marca Orbeon).
 | Control | Qué hace | Cuándo usarlo |
 |---------|----------|---------------|
 | **Cargar XML base** | Abre selector de archivo `.xml` o `.txt` y parsea la plantilla | Siempre al iniciar una sesión |
-| **PDF instrucciones** (bloque) | Zona para analizar un PDF con anotaciones de margen | Al aplicar el documento de instrucciones del formulario 684/480 |
+| **PDF instrucciones** (bloque) | Analiza un PDF con anotaciones de margen sobre el XML cargado | Al aplicar un documento de instrucciones (684/480 u otro formulario) |
 | ↳ **Elegir PDF** | Selecciona el PDF de instrucciones | Tras cargar el XML base |
 | ↳ **Aplicar al XML** | Si está marcado, ejecuta cambios automáticos al pulsar Analizar | Cuando confíe en las propuestas **Auto** |
 | ↳ **Analizar** | Envía PDF + XML al servidor y abre el modal de propuestas | Tras elegir el PDF |
@@ -69,8 +69,23 @@ Todos los botones de acción usan el **mismo azul** (marca Orbeon).
 
 Si analizó un PDF, aparece una franja ámbar bajo el header:
 
-- **Ver detalle** — reabre el modal con todas las propuestas.
+- **Ver detalle** — reabre el modal con propuestas, estructura y XML.
 - **×** — cierra la barra (el análisis sigue en memoria hasta recargar).
+
+### Modal PDF de instrucciones
+
+Tras **Analizar**, el modal tiene tres pestañas:
+
+| Pestaña | Contenido |
+|---------|-----------|
+| **Propuestas** | Lista filtrable con etiquetas Auto/Revisar y confianza alta/media |
+| **Estructura** | Árbol por secciones con campos afectados; anotaciones sin mapear al final |
+| **XML formulario** | XML actual (solo lectura), **Copiar** y **Abrir en Código XML** |
+
+Botones adicionales en el modal:
+
+- **Comparar con otro PDF…** — contrasta el PDF de la barra con un segundo archivo (mismo XML cargado).
+- Filtros **Todos** / **Automáticos** / **Revisión manual** en la pestaña Propuestas.
 
 ---
 
@@ -162,22 +177,27 @@ Simulación HTML del formulario según el XML activo:
 
 ## 8. Análisis de PDF de instrucciones
 
-Flujo recomendado para el formulario **684/480** (v39 → PRE):
+El catálogo de reglas se **genera automáticamente** desde el XML cargado (declaraciones, anexos, secciones). Funciona con cualquier plantilla Orbeon habitual; el 684/480 tiene además reglas estáticas complementarias.
+
+Flujo recomendado (p. ej. v39 → PRE):
 
 1. Cargar XML base (p. ej. v39).
 2. Elegir PDF de instrucciones.
-3. **Sin marcar** «Aplicar al XML» → revisar propuestas en el modal.
-4. Filtrar por **Automáticos** / **Revisión manual**.
-5. Leer etiquetas:
+3. **Sin marcar** «Aplicar al XML» → revisar en el modal:
+   - Pestaña **Propuestas** — filtrar por Automáticos / Revisión manual.
+   - Pestaña **Estructura** — ver impacto por sección y campos.
+   - Pestaña **XML formulario** — inspeccionar o copiar la plantilla.
+4. Leer etiquetas:
 
 | Etiqueta | Significado |
 |----------|-------------|
-| **Auto** | Se puede aplicar sin revisión (campo en catálogo) |
+| **Auto** | Se puede aplicar sin revisión (campo identificado en el catálogo) |
 | **Revisar** | Comprobar manualmente (p. ej. altas de controles) |
 | **alta** | Confianza alta — correspondencia directa PDF ↔ campo |
 | **media** | Confianza media — verificar campo afectado |
 
-6. Si está conforme, marcar **Aplicar al XML** y volver a **Analizar**, o aplicar cambios restantes a mano.
+5. Si está conforme, marcar **Aplicar al XML** y volver a **Analizar**, o aplicar cambios restantes a mano.
+6. **Comparar con otro PDF…** (en el modal) si dispone de dos versiones del documento de instrucciones.
 7. **Comparar** con XML objetivo (PRE) para validar.
 8. **Exportar XML de Salida**.
 
@@ -212,9 +232,16 @@ Detalle técnico: [11 — Análisis PDF instrucciones](11-analisis-pdf-instrucci
 ### B. Aplicar instrucciones PDF (684)
 
 1. Cargar v39 → analizar PDF (sin aplicar).
-2. Revisar propuestas **media** y **Revisar**.
+2. Revisar pestañas **Propuestas**, **Estructura** y propuestas **media** / **Revisar**.
 3. Aplicar automáticos → comparar con PRE → ajustar manualmente en Código XML o CRUD.
 4. Exportar.
+
+### B2. Comparar dos PDFs de instrucciones
+
+1. Cargar XML base.
+2. Elegir y analizar el PDF de referencia (sin aplicar).
+3. En el modal → **Comparar con otro PDF…** → elegir la segunda versión.
+4. Revisar anotaciones y campos que difieren entre ambos documentos.
 
 ### C. Renombrar controles genéricos
 
@@ -236,7 +263,8 @@ Detalle técnico: [11 — Análisis PDF instrucciones](11-analisis-pdf-instrucci
 - Asistente en español para consultas y cambios frecuentes.
 - CRUD contextual con preview antes de guardar.
 - Comparación estructural entre versiones.
-- Análisis de PDF de instrucciones con catálogo validado 684/480.
+- Análisis de PDF de instrucciones con catálogo dinámico desde XML (+ reglas 684/480).
+- Vista estructural del impacto PDF por secciones y comparación entre dos PDFs de instrucciones.
 - Detección y renombrado de `control-N`.
 - Búsqueda avanzada en XML.
 - API REST para integración y automatización.
@@ -254,7 +282,7 @@ Detalle técnico: [11 — Análisis PDF instrucciones](11-analisis-pdf-instrucci
 | Asistente por reglas | Frases muy libres pueden no entenderse |
 | Sin persistencia | Al recargar el navegador se pierde el trabajo no exportado |
 | PDF mock (API) | Generación PDF existe en API; **no hay pestaña Vista PDF en la UI actual** |
-| Catálogo PDF | Solo formulario 684/480 mapeado; otros requieren nuevo catálogo |
+| Catálogo PDF | Catálogo auto desde XML; `instrucciones-684-mapeo.json` solo complementa el 684/480 |
 | Altas de controles desde PDF | Propuestas **Revisar**: copiar estructura del XML objetivo a mano |
 
 Lista completa: [01 — Requisitos funcionales §7](01-requisitos-funcionales.md).

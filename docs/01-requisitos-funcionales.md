@@ -143,6 +143,7 @@ Guía de usuario: [10-controles-genericos-y-busqueda-xml.md](10-controles-generi
 | RF-048 | `POST /api/formulario/analizar-calculadoras` — inventario de `xf:bind @calculate` con fuentes de datos. | Media | Implementado |
 | RF-049 | `POST /api/formulario/cumplimentar-instancia` — aplica preset o valores a `fr-form-instance` y devuelve XML reparseado. | Alta | Implementado |
 | RF-051 | `POST /api/formulario/analizar-instrucciones-pdf` — extrae anotaciones de un PDF de instrucciones, propone cambios XML según catálogo y opcionalmente los aplica. | Alta | Implementado |
+| RF-052 | `POST /api/formulario/comparar-instrucciones-pdf` — compara dos PDFs de instrucciones sobre el mismo XML (anotaciones y campos afectados). | Media | Implementado |
 
 ---
 
@@ -151,10 +152,12 @@ Guía de usuario: [10-controles-genericos-y-busqueda-xml.md](10-controles-generi
 | ID | Requisito | Prioridad | Estado |
 |----|-----------|-----------|--------|
 | RF-055 | El sistema debe extraer anotaciones del margen de un PDF de instrucciones (OpenPDF). | Alta | Implementado |
-| RF-056 | El sistema debe traducir anotaciones a propuestas de cambio XML mediante un catálogo de reglas (`instrucciones-684-mapeo.json`). | Alta | Implementado |
+| RF-056 | El sistema debe traducir anotaciones a propuestas de cambio XML mediante catálogo dinámico generado desde el XML cargado, con fusión opcional de `instrucciones-684-mapeo.json`. | Alta | Implementado |
 | RF-057 | Cada propuesta debe indicar si es aplicable automáticamente (**Auto**) o requiere revisión (**Revisar**) y un nivel de confianza (**alta** / **media**). | Media | Implementado |
 | RF-058 | Con `aplicar=true`, el sistema debe ejecutar en el XML solo las propuestas automáticas (`remove-field`, `update-resource`, `update-bind`, etc.). | Alta | Implementado |
-| RF-059 | La UI debe mostrar un modal con propuestas filtrables, leyenda de etiquetas y barra resumen tras el análisis. | Media | Implementado |
+| RF-059 | La UI debe mostrar un modal con propuestas filtrables, pestañas Estructura y XML formulario, leyenda de etiquetas y barra resumen tras el análisis. | Media | Implementado |
+| RF-060 | El sistema debe devolver la estructura del impacto del PDF agrupada por secciones y campos afectados (`estructuraInstrucciones`). | Media | Implementado |
+| RF-061 | La UI debe permitir comparar dos PDFs de instrucciones sobre el mismo XML y mostrar diferencias de anotaciones y campos. | Media | Implementado |
 
 Ver [11 — Análisis PDF instrucciones](11-analisis-pdf-instrucciones.md).
 
@@ -181,7 +184,7 @@ El parseo reconoce, entre otros:
 | RF-L05 | `yesno-input` y `appearance="full"` se renderizan de forma simplificada en vista diseño. |
 | RF-L06 | No se persiste el estado en base de datos; todo es en memoria del navegador/sesión HTTP. |
 | RF-L09 | El editor no ejecuta XPath en tiempo real; las calculadoras se analizan y editan en XML estático (sin recalcular valores como Orbeon Form Runner). |
-| RF-L10 | El análisis de PDF de instrucciones solo cubre el formulario 684/480 con catálogo `instrucciones-684-mapeo.json`; altas complejas quedan en revisión manual. |
+| RF-L10 | El análisis de PDF depende de la coincidencia texto anotación ↔ recursos XML; altas complejas quedan en revisión manual. El catálogo estático `instrucciones-684-mapeo.json` solo complementa el 684/480. |
 | RF-L11 | La pestaña «Vista PDF» fue retirada de la UI; la generación PDF sigue disponible vía `POST /api/formulario/vista-pdf`. |
 
 Manual de usuario: [00-manual-usuario.md](00-manual-usuario.md) · Mejoras planificadas: [12-roadmap-mejoras.md](12-roadmap-mejoras.md).

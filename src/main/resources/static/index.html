@@ -589,14 +589,15 @@
 <!-- Modal análisis PDF instrucciones -->
 <div id="modalInstruccionesPdf" class="fixed inset-0 z-50 hidden">
     <div class="absolute inset-0 bg-black/40" id="modalInstruccionesPdfFondo"></div>
-    <div class="absolute inset-4 md:inset-8 lg:inset-12 bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden max-w-5xl mx-auto">
+    <div class="absolute inset-4 md:inset-8 lg:inset-12 bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden max-w-7xl mx-auto">
         <div class="px-6 py-4 border-b border-slate-200 flex items-start justify-between gap-4 bg-amber-50 shrink-0">
             <div class="min-w-0">
                 <h2 class="text-lg font-semibold text-slate-800">Análisis PDF de instrucciones</h2>
                 <p id="modalInstruccionesPdfMeta" class="text-xs text-slate-600 mt-1"></p>
                 <p class="text-[11px] text-slate-500 mt-2 max-w-2xl">
-                    Las anotaciones del margen se traducen a cambios sobre el XML Orbeon.
-                    <strong>Aplicar al XML</strong> ejecuta esos cambios en la plantilla cargada (quitar controles del view, actualizar textos en resources, etc.).
+                    Las anotaciones del margen se traducen a cambios sobre el XML Orbeon cargado.
+                    El catálogo de reglas se genera <strong>automáticamente desde ese XML</strong> (cualquier formulario).
+                    <strong>Aplicar al XML</strong> ejecuta los cambios automáticos en la plantilla.
                 </p>
             </div>
             <button type="button" id="cerrarModalInstruccionesPdf" class="text-slate-400 hover:text-slate-600 text-2xl leading-none shrink-0">&times;</button>
@@ -623,18 +624,75 @@
             </div>
         </div>
         <div id="modalInstruccionesPdfResumen" class="px-6 py-3 border-b border-slate-100 bg-white text-sm text-slate-700 shrink-0"></div>
+        <div class="px-6 py-2 border-b border-slate-100 flex flex-wrap items-center gap-2 shrink-0">
+            <button type="button" data-tab-instr="propuestas" class="tab-instr px-3 py-1.5 text-xs rounded-md bg-orbeon-500 text-white font-medium">Propuestas</button>
+            <button type="button" data-tab-instr="estructura" class="tab-instr px-3 py-1.5 text-xs rounded-md bg-slate-100 text-slate-700">Estructura</button>
+            <button type="button" data-tab-instr="xml" class="tab-instr px-3 py-1.5 text-xs rounded-md bg-slate-100 text-slate-700">XML formulario</button>
+            <span class="flex-1"></span>
+            <button type="button" id="btnCompararOtroPdfInstrucciones"
+                    class="btn-header text-xs py-1.5 px-3" title="Comparar este PDF con otro PDF de instrucciones sobre el mismo XML">
+                Comparar con otro PDF…
+            </button>
+        </div>
+        <div id="panelInstrPropuestas" class="flex-1 flex flex-col min-h-0 overflow-hidden">
         <div class="px-6 py-2 border-b border-slate-100 flex flex-wrap gap-2 shrink-0">
             <button type="button" data-filtro-instr="TODOS" class="filtro-instr px-3 py-1 text-xs rounded-full bg-slate-800 text-white">Todos</button>
             <button type="button" data-filtro-instr="automatico" class="filtro-instr px-3 py-1 text-xs rounded-full bg-slate-100 text-slate-700">Automáticos</button>
             <button type="button" data-filtro-instr="manual" class="filtro-instr px-3 py-1 text-xs rounded-full bg-slate-100 text-slate-700">Revisión manual</button>
         </div>
         <div id="modalInstruccionesPdfLista" class="flex-1 overflow-y-auto px-6 py-4 space-y-3 min-h-0"></div>
+        </div>
+        <div id="panelInstrEstructura" class="hidden flex-1 overflow-y-auto px-6 py-4 min-h-0 space-y-3"></div>
+        <div id="panelInstrXml" class="hidden flex-1 flex flex-col min-h-0 overflow-hidden">
+            <div class="px-6 py-2 border-b border-slate-100 flex gap-2 shrink-0 bg-slate-50">
+                <button type="button" id="btnCopiarXmlInstrucciones" class="text-xs px-3 py-1 bg-white border border-slate-300 rounded-md hover:bg-slate-100">Copiar XML</button>
+                <button type="button" id="btnVerXmlEnEditor" class="text-xs px-3 py-1 bg-orbeon-500 text-white rounded-md hover:bg-orbeon-600">Abrir en Código XML</button>
+            </div>
+            <textarea id="modalInstruccionesPdfXml" readonly spellcheck="false"
+                      class="code-area flex-1 w-full p-4 bg-slate-900 text-emerald-200 text-xs leading-relaxed resize-none focus:outline-none"></textarea>
+        </div>
         <div id="modalInstruccionesPdfAplicados" class="hidden border-t border-emerald-200 bg-emerald-50 px-6 py-3 max-h-40 overflow-y-auto shrink-0">
             <p class="text-xs font-semibold text-emerald-900 mb-1">Cambios aplicados al XML</p>
             <ul id="modalInstruccionesPdfAplicadosLista" class="text-[11px] text-emerald-900 space-y-0.5 font-mono"></ul>
         </div>
     </div>
 </div>
+
+<!-- Modal comparar dos PDFs de instrucciones -->
+<div id="modalCompararInstruccionesPdf" class="fixed inset-0 z-[60] hidden">
+    <div class="absolute inset-0 bg-black/40" id="modalCompararInstruccionesPdfFondo"></div>
+    <div class="absolute inset-4 md:inset-8 lg:inset-12 bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden max-w-6xl mx-auto">
+        <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-violet-50 shrink-0">
+            <div>
+                <h2 class="text-lg font-semibold text-slate-800">Comparar PDFs de instrucciones</h2>
+                <p id="compararInstrResumen" class="text-xs text-slate-600 mt-1"></p>
+            </div>
+            <button type="button" id="cerrarCompararInstruccionesPdf" class="text-slate-400 hover:text-slate-600 text-2xl leading-none">&times;</button>
+        </div>
+        <div class="flex-1 overflow-y-auto p-6 space-y-4 min-h-0">
+            <div class="grid md:grid-cols-2 gap-4">
+                <div class="border rounded-lg p-4 bg-slate-50">
+                    <h3 class="text-sm font-semibold text-slate-800 mb-2">Solo en PDF base</h3>
+                    <ul id="listaAnotSoloBase" class="text-xs space-y-1 text-slate-700 max-h-40 overflow-y-auto"></ul>
+                    <h4 class="text-[11px] font-medium text-slate-500 mt-3 mb-1">Campos afectados</h4>
+                    <div id="camposSoloBase" class="flex flex-wrap gap-1"></div>
+                </div>
+                <div class="border rounded-lg p-4 bg-slate-50">
+                    <h3 class="text-sm font-semibold text-slate-800 mb-2">Solo en PDF nuevo</h3>
+                    <ul id="listaAnotSoloNuevo" class="text-xs space-y-1 text-slate-700 max-h-40 overflow-y-auto"></ul>
+                    <h4 class="text-[11px] font-medium text-slate-500 mt-3 mb-1">Campos afectados</h4>
+                    <div id="camposSoloNuevo" class="flex flex-wrap gap-1"></div>
+                </div>
+            </div>
+            <div class="border rounded-lg p-4">
+                <h3 class="text-sm font-semibold text-slate-800 mb-2">Campos afectados en ambos PDF</h3>
+                <div id="camposComunesInstr" class="flex flex-wrap gap-1"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<input type="file" id="inputPdfInstruccionesComparar" accept=".pdf,application/pdf" class="hidden">
 
 <script>
     const API = '/api/formulario';
@@ -659,6 +717,7 @@
     let calculadoraEditandoId = null;
     let ultimoAnalisisInstruccionesPdf = null;
     let filtroInstruccionesPdf = 'TODOS';
+    let tabInstruccionesPdf = 'propuestas';
 
     const TIPO_VISIBILIDAD = {
         siempre_visible: { label: 'Siempre visible', cls: 'bg-slate-100 text-slate-600' },
@@ -2960,10 +3019,91 @@
         } else {
             panelAplicados.classList.add('hidden');
         }
+
+        renderizarEstructuraInstruccionesPdf(data);
+        $('#modalInstruccionesPdfXml').value = data.xml || '';
+    }
+
+    function cambiarTabInstruccionesPdf(tab) {
+        tabInstruccionesPdf = tab;
+        document.querySelectorAll('.tab-instr').forEach(b => {
+            const on = b.dataset.tabInstr === tab;
+            b.classList.toggle('bg-orbeon-500', on);
+            b.classList.toggle('text-white', on);
+            b.classList.toggle('font-medium', on);
+            b.classList.toggle('bg-slate-100', !on);
+            b.classList.toggle('text-slate-700', !on);
+        });
+        $('#panelInstrPropuestas').classList.toggle('hidden', tab !== 'propuestas');
+        $('#panelInstrPropuestas').classList.toggle('flex', tab === 'propuestas');
+        $('#panelInstrEstructura').classList.toggle('hidden', tab !== 'estructura');
+        $('#panelInstrXml').classList.toggle('hidden', tab !== 'xml');
+        $('#panelInstrXml').classList.toggle('flex', tab === 'xml');
+    }
+
+    function renderizarEstructuraInstruccionesPdf(data) {
+        const panel = $('#panelInstrEstructura');
+        if (!panel) return;
+        const est = data.estructuraInstrucciones;
+        if (!est || !est.secciones?.length) {
+            panel.innerHTML = '<p class="text-slate-400 text-sm text-center py-8">Sin estructura detectada. Compruebe que el XML está cargado y que hay propuestas mapeadas.</p>';
+            return;
+        }
+        let html = `<p class="text-xs text-slate-600 mb-3">Formulario <strong>${escaparHtml(est.formulario || '')}</strong> · `
+            + `${est.totalSeccionesAfectadas} secciones · ${est.totalCamposAfectados} campos afectados</p>`;
+        est.secciones.forEach(sec => {
+            html += `<details class="border border-slate-200 rounded-lg bg-white" open>
+                <summary class="px-3 py-2 cursor-pointer text-sm font-semibold text-slate-800 bg-slate-50 rounded-t-lg">${escaparHtml(sec.titulo || sec.id)} <span class="text-slate-400 font-normal">(${sec.campos?.length || 0})</span></summary>
+                <div class="p-3 space-y-2">`;
+            (sec.campos || []).forEach(c => {
+                const auto = c.aplicableAutomaticamente;
+                html += `<div class="text-xs border border-slate-100 rounded p-2">
+                    <div class="flex flex-wrap gap-1 mb-1">
+                        <code class="bg-slate-100 px-1 rounded">${escaparHtml(c.fieldId)}</code>
+                        <span class="px-1 rounded ${auto ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-900'}">${auto ? 'Auto' : 'Revisar'}</span>
+                        ${c.confianza ? `<span class="px-1 rounded bg-slate-200">${escaparHtml(c.confianza)}</span>` : ''}
+                    </div>
+                    <p class="text-slate-700">${escaparHtml(c.label || '')}</p>
+                    ${c.intencion ? `<p class="text-slate-500 mt-0.5">${escaparHtml(c.intencion)}</p>` : ''}
+                </div>`;
+            });
+            html += '</div></details>';
+        });
+        if (est.anotacionesSinMapear?.length) {
+            html += `<div class="border border-amber-200 rounded-lg p-3 bg-amber-50 mt-3">
+                <p class="text-xs font-semibold text-amber-900 mb-2">Anotaciones sin mapear (${est.anotacionesSinMapear.length})</p>
+                <ul class="text-[11px] text-amber-900 space-y-1">`;
+            est.anotacionesSinMapear.forEach(a => {
+                html += `<li>pág. ${a.pagina}: «${escaparHtml(a.contenido || '')}»</li>`;
+            });
+            html += '</ul></div>';
+        }
+        panel.innerHTML = html;
+    }
+
+    function renderizarComparacionInstruccionesPdf(data) {
+        $('#compararInstrResumen').textContent = data.resumen || '';
+        const fmtAnot = (lista, el) => {
+            el.innerHTML = (lista || []).length
+                ? lista.map(a => `<li class="border-b border-slate-100 py-1">pág. ${a.pagina}: ${escaparHtml(a.contenido || '')}</li>`).join('')
+                : '<li class="text-slate-400">Ninguna</li>';
+        };
+        fmtAnot(data.anotacionesSoloBase, $('#listaAnotSoloBase'));
+        fmtAnot(data.anotacionesSoloNuevo, $('#listaAnotSoloNuevo'));
+        const fmtCampos = (ids, el) => {
+            el.innerHTML = (ids || []).length
+                ? ids.map(id => `<code class="text-[10px] bg-white border px-1 rounded">${escaparHtml(id)}</code>`).join('')
+                : '<span class="text-slate-400 text-xs">Ninguno</span>';
+        };
+        fmtCampos(data.camposSoloBase, $('#camposSoloBase'));
+        fmtCampos(data.camposSoloNuevo, $('#camposSoloNuevo'));
+        fmtCampos(data.camposComunes, $('#camposComunesInstr'));
+        $('#modalCompararInstruccionesPdf').classList.remove('hidden');
     }
 
     function abrirModalInstruccionesPdf(data, aplicado = false) {
         renderizarModalInstruccionesPdf(data, aplicado);
+        cambiarTabInstruccionesPdf('propuestas');
         $('#modalInstruccionesPdf').classList.remove('hidden');
     }
 
@@ -2992,6 +3132,60 @@
             if (ultimoAnalisisInstruccionesPdf) renderizarModalInstruccionesPdf(ultimoAnalisisInstruccionesPdf, !!ultimoAnalisisInstruccionesPdf.logAplicados?.length);
         });
     });
+
+    document.querySelectorAll('.tab-instr').forEach(btn => {
+        btn.addEventListener('click', () => cambiarTabInstruccionesPdf(btn.dataset.tabInstr));
+    });
+
+    $('#btnCopiarXmlInstrucciones')?.addEventListener('click', () => {
+        const t = $('#modalInstruccionesPdfXml')?.value;
+        if (t) navigator.clipboard.writeText(t).then(() => mostrarToast('XML copiado', 'ok'));
+    });
+
+    $('#btnVerXmlEnEditor')?.addEventListener('click', () => {
+        const t = $('#modalInstruccionesPdfXml')?.value;
+        if (t) {
+            $('#textareaXml').value = t;
+            cambiarTab('codigo');
+            mostrarToast('XML cargado en Código XML', 'ok');
+        }
+    });
+
+    $('#btnCompararOtroPdfInstrucciones')?.addEventListener('click', () => {
+        if (!ultimoAnalisisInstruccionesPdf) {
+            mostrarToast('Analice primero un PDF', 'error');
+            return;
+        }
+        $('#inputPdfInstruccionesComparar').click();
+    });
+
+    $('#inputPdfInstruccionesComparar')?.addEventListener('change', async (e) => {
+        const fileNuevo = e.target.files?.[0];
+        e.target.value = '';
+        if (!fileNuevo || !xmlActual) return;
+        const inputBase = $('#inputPdfInstrucciones');
+        const fileBase = inputBase?.files?.[0];
+        if (!fileBase) {
+            mostrarToast('No hay PDF base seleccionado en la barra', 'error');
+            return;
+        }
+        const formData = new FormData();
+        formData.append('pdfBase', fileBase);
+        formData.append('pdfNuevo', fileNuevo);
+        formData.append('xml', xmlActual);
+        try {
+            mostrarToast('Comparando PDFs…', 'info');
+            const res = await fetch(`${API}/comparar-instrucciones-pdf`, { method: 'POST', body: formData });
+            if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || res.statusText);
+            renderizarComparacionInstruccionesPdf(await res.json());
+            mostrarToast('Comparación completada', 'ok');
+        } catch (err) {
+            mostrarToast('Error: ' + err.message, 'error');
+        }
+    });
+
+    $('#cerrarCompararInstruccionesPdf')?.addEventListener('click', () => $('#modalCompararInstruccionesPdf').classList.add('hidden'));
+    $('#modalCompararInstruccionesPdfFondo')?.addEventListener('click', () => $('#modalCompararInstruccionesPdf').classList.add('hidden'));
 
     async function analizarInstruccionesPdf() {
         const input = $('#inputPdfInstrucciones');
@@ -3053,7 +3247,7 @@
             el.textContent = nombre;
             el.classList.remove('hidden');
             el.classList.add('md:inline');
-            el.title = nombre;
+            el.title = nombre + ' — Pulse «Analizar» (requiere XML base cargado)';
         } else {
             el.textContent = 'Sin archivo';
         }

@@ -6,15 +6,22 @@ Traduce las **anotaciones del margen** de un PDF de instrucciones (p. ej. formul
 
 ## 1. Flujo en la interfaz
 
-1. **Cargar XML base** — plantilla a modificar (p. ej. v39).
+El intérprete **no depende de un formulario concreto**: construye el catálogo de reglas a partir del **XML que tenga cargado** (declaraciones, anexos, secciones, textos). Funciona con cualquier plantilla Orbeon que siga la estructura habitual.
+
+1. **Cargar XML base** — plantilla a modificar (p. ej. v39, 1793 PRCI, etc.).
 2. En la barra superior, bloque **PDF instrucciones** (índigo):
    - **Elegir PDF** — fichero con anotaciones de margen.
    - **Aplicar al XML** (opcional) — si está marcado, ejecuta los cambios automáticos al analizar.
    - **Analizar** — envía PDF + XML al servidor.
-3. Se abre un **modal** con las propuestas. Tras cerrarlo queda una **barra resumen** con «Ver detalle».
-4. Si marcó **Aplicar al XML**, el editor se actualiza con el XML resultante y un log de cambios aplicados.
+3. Se abre un **modal** con tres pestañas:
+   - **Propuestas** — lista filtrable (Todos / Automáticos / Revisión manual) con etiquetas Auto/Revisar y confianza.
+   - **Estructura** — árbol por secciones del formulario con los campos afectados por cada instrucción; al final, anotaciones sin mapear.
+   - **XML formulario** — plantilla actual (o modificada si aplicó cambios), con **Copiar** y **Abrir en Código XML**.
+4. Tras cerrar el modal queda una **barra resumen** con «Ver detalle».
+5. Si marcó **Aplicar al XML**, el editor se actualiza con el XML resultante y un log de cambios aplicados.
+6. **Comparar con otro PDF…** (dentro del modal) — elige un segundo PDF de instrucciones sobre el mismo XML y muestra diferencias de anotaciones y campos afectados.
 
-El **comparador** (Comparar con otro XML / Comparar 2 archivos…) está en la barra superior, junto al bloque PDF. Las modificaciones JSON siguen en la pestaña **Modificar JSON**.
+El **comparador XML** (Comparar con otro XML / Comparar 2 archivos…) está en la barra superior, junto al bloque PDF. Las modificaciones JSON siguen en la pestaña **Modificar JSON**.
 
 ---
 
@@ -67,11 +74,61 @@ Filtros del modal: **Todos**, **Automáticos**, **Revisión manual**.
   ],
   "cambiosAgregados": [],
   "xml": "...",
+  "nombreFormulario": "684_F1b_MIXTO_480_Solicitud",
+  "estructura": { "secciones": [] },
+  "estructuraInstrucciones": {
+    "formulario": "684_F1b_MIXTO_480_Solicitud",
+    "totalSeccionesAfectadas": 4,
+    "totalCamposAfectados": 12,
+    "secciones": [
+      {
+        "id": "declaracionesResponsables-section",
+        "titulo": "Declaraciones responsables",
+        "campos": [
+          {
+            "fieldId": "declaracionesResponsables-inscritoROAC-control",
+            "label": "Inscrito en el ROAC",
+            "intencion": "eliminar-declaracion",
+            "confianza": "alta",
+            "aplicableAutomaticamente": true
+          }
+        ]
+      }
+    ],
+    "anotacionesSinMapear": []
+  },
   "logAplicados": []
 }
 ```
 
 Si `aplicar=true`, `xml` contiene la plantilla modificada y `logAplicados` lista las operaciones ejecutadas.
+
+### `POST /api/formulario/comparar-instrucciones-pdf`
+
+Compara dos PDFs de instrucciones sobre la **misma plantilla XML** (p. ej. v39 vs revisión posterior del documento de instrucciones).
+
+**Content-Type:** `multipart/form-data`
+
+| Campo | Tipo | Obligatorio | Descripción |
+|-------|------|-------------|-------------|
+| `pdfBase` | archivo | Sí | PDF de referencia (el de la barra superior) |
+| `pdfNuevo` | archivo | Sí | Segundo PDF a contrastar |
+| `xml` | texto | Sí | Plantilla Orbeon actual |
+
+**Respuesta:** `ComparacionInstruccionesResponse`
+
+```json
+{
+  "resumen": "Base: 23 anotaciones · Nuevo: 25 anotaciones · 2 solo en base, 4 solo en nuevo",
+  "anotacionesSoloBase": [{ "pagina": 3, "contenido": "Eliminar" }],
+  "anotacionesSoloNuevo": [],
+  "camposSoloBase": ["campo-a-control"],
+  "camposSoloNuevo": ["campo-b-control"],
+  "camposComunes": ["campo-c-control"],
+  "analisisBase": { },
+  "analisisNuevo": { }
+}
+```
 
 ---
 
@@ -84,24 +141,31 @@ PDF (multipart)
 OrbeonPdfInstructionsService     ← extrae anotaciones (OpenPDF)
     │
     ▼
-OrbeonInstructionsInterpreterService   ← reglas + catálogo JSON
+OrbeonInstructionsCatalogBuilder       ← catálogo dinámico desde XML (+ JSON estático opcional)
+    │
+    ▼
+OrbeonInstructionsInterpreterService   ← reglas + matching anotaciones
     │
     ├── propuestas (PropuestaCambioXml)
+    ├── OrbeonInstructionsStructureService → estructuraInstrucciones (secciones / campos)
+    ├── OrbeonStructureService → estructura completa del formulario
     └── si aplicar: OrbeonModificationService (remove-field, update-resource, update-bind, …)
 ```
 
 ### Catálogo de mapeo
 
-`src/main/resources/datos/instrucciones-684-mapeo.json`
+**Generación automática (por defecto):** al analizar, `OrbeonInstructionsCatalogBuilder` escanea el XML cargado y crea reglas para:
 
-Define reglas tipadas para el formulario **684_F1b_MIXTO_480_Solicitud** (v39 → PRE):
+- Textos de **declaraciones** (`declaraciones*`, `declaracion*`)
+- Textos de **anexos** (`anexos-*`)
+- **Secciones** (`fr:section` + controles hijos)
+- Otros recursos con `-texto` en el id
 
-- `reglasApartado` — eliminar secciones completas y binds asociados
-- `reglasDeclaracion` — eliminar declaraciones responsables por fragmento de texto
-- `reglasAnexo` — sustituir textos, eliminar documentos, marcar altas pendientes
-- `reglasTexto` — insertar párrafos en resources o eliminar campos
+Cada regla solo se aplica si una **anotación del PDF** coincide con el fragmento de texto y pide eliminación, sustitución o inserción.
 
-Solo se aplican reglas del catálogo con **campos concretos**; no se infiere una eliminación masiva por cada anotación genérica «eliminar declaración».
+**Catálogo estático opcional:** `instrucciones-684-mapeo.json` se fusiona como complemento (sustituciones exactas, marcadores del 684/480).
+
+Servicio: `OrbeonInstructionsCatalogBuilder` + `OrbeonInstructionsInterpreterService`.
 
 ### Tipos de cambio generados
 
@@ -116,19 +180,20 @@ Solo se aplican reglas del catálogo con **campos concretos**; no se infiere una
 ## 5. Pruebas
 
 ```bash
-mvn test -Dtest=OrbeonInstructionsInterpreterTest
+mvn test -Dtest=OrbeonInstructionsInterpreterTest,OrbeonInstructionsCatalogBuilderTest
 ```
 
-Verifica que el intérprete no elimina declaraciones no contempladas en el catálogo (p. ej. `declaracionesResponsables-noDeudaImpagada-control` se conserva).
+- `OrbeonInstructionsInterpreterTest` — no elimina declaraciones no contempladas en el catálogo.
+- `OrbeonInstructionsCatalogBuilderTest` — genera reglas desde XML de ejemplo.
 
 ---
 
 ## 6. Limitaciones
 
-- Catálogo validado para el **684/480**; otros formularios requieren un JSON de mapeo propio.
+- La calidad depende de que las anotaciones del PDF **coincidan en texto** con recursos del XML (confianza **media** si la coincidencia es parcial).
 - Las propuestas **Revisar** (altas de controles) no se aplican solas: hay que copiar la estructura del XML objetivo manualmente.
 - La extracción de anotaciones depende del formato del PDF (comentarios/marcas de revisión en el margen).
-- No sustituye la revisión humana del comparador PRE vs v39.
+- No sustituye la revisión humana del comparador con la versión objetivo.
 
 ---
 

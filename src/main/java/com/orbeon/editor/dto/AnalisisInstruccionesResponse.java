@@ -1,6 +1,8 @@
 package com.orbeon.editor.dto;
 
 import com.orbeon.editor.model.AnotacionInstruccionPdf;
+import com.orbeon.editor.model.EstructuraFormulario;
+import com.orbeon.editor.model.EstructuraInstruccionesPdf;
 import com.orbeon.editor.model.PropuestaCambioXml;
 
 import java.util.ArrayList;
@@ -17,6 +19,9 @@ public class AnalisisInstruccionesResponse {
     private List<Map<String, Object>> cambiosAgregados = new ArrayList<>();
     private String resumen;
     private String xml;
+    private String nombreFormulario;
+    private EstructuraFormulario estructura;
+    private EstructuraInstruccionesPdf estructuraInstrucciones;
     private List<String> logAplicados = new ArrayList<>();
 
     public String getNombrePdf() {
@@ -81,6 +86,30 @@ public class AnalisisInstruccionesResponse {
 
     public void setXml(String xml) {
         this.xml = xml;
+    }
+
+    public String getNombreFormulario() {
+        return nombreFormulario;
+    }
+
+    public void setNombreFormulario(String nombreFormulario) {
+        this.nombreFormulario = nombreFormulario;
+    }
+
+    public EstructuraFormulario getEstructura() {
+        return estructura;
+    }
+
+    public void setEstructura(EstructuraFormulario estructura) {
+        this.estructura = estructura;
+    }
+
+    public EstructuraInstruccionesPdf getEstructuraInstrucciones() {
+        return estructuraInstrucciones;
+    }
+
+    public void setEstructuraInstrucciones(EstructuraInstruccionesPdf estructuraInstrucciones) {
+        this.estructuraInstrucciones = estructuraInstrucciones;
     }
 
     public List<String> getLogAplicados() {
